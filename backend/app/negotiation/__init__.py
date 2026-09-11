@@ -1,4 +1,4 @@
 # Negotiation Package
-from app.negotiation.agents import run_multi_agent_negotiation
+from app.negotiation.graph import run_bilateral_negotiation
 
-__all__ = ["run_multi_agent_negotiation"]
+__all__ = ["run_bilateral_negotiation"]

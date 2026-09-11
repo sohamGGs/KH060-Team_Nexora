@@ -5,15 +5,6 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 # --- USER & AUTHENTICATION SCHEMAS ---
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-
-
-class TokenData(BaseModel):
-    email: Optional[str] = None
-
-
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -22,6 +13,16 @@ class UserOut(BaseModel):
     full_name: str
     role: str
     department: Optional[str] = None
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+    user: Optional[UserOut] = None
+
+
+class TokenData(BaseModel):
+    email: Optional[str] = None
 
 
 # --- VENDOR SCHEMAS ---
@@ -48,12 +49,38 @@ class VendorBidOut(BaseModel):
     vendor: Optional[VendorOut] = None
 
 
+class ScoreBreakdown(BaseModel):
+    price_score: float
+    delivery_score: float
+    reliability_score: float
+    history_score: float
+    nearshoring_bonus: float
+    total_score: float
+    price_variance_pct: float
+
+
 class VendorRecommendation(BaseModel):
+    bid_id: int
     vendor_id: int
     vendor_name: str
     pricing_tier: str
-    rationale: str
-    score: float
+    contact_email: Optional[str] = ""
+    quoted_price: float
+    original_quoted_price: Optional[float] = None
+    estimated_budget: float
+    delivery_days: int
+    original_delivery_days: Optional[int] = None
+    avg_delivery_days: Optional[int] = 5
+    reliability_score: float
+    history_score_raw: float
+    notes: Optional[str] = None
+    scores: ScoreBreakdown
+    rank: Optional[int] = 0
+    bid_score: Optional[float] = None
+    is_local_vendor: Optional[bool] = False
+    is_incubator: Optional[bool] = False
+    local_proximity_km: Optional[float] = 15.0
+    negotiation_transcript: Optional[List[Dict[str, Any]]] = None
 
 
 # --- COMPLIANCE SCHEMAS ---
@@ -388,4 +415,9 @@ class NegotiationResumeRequest(BaseModel):
 NegotiationHistoryResponse = GovNegotiationHistoryResponse
 
 class RecommendationsResponse(BaseModel):
+    pr_id: Optional[int] = None
+    pr_title: Optional[str] = None
+    estimated_budget: Optional[float] = None
+    urgency: Optional[str] = None
+    department: Optional[str] = None
     recommendations: List[VendorRecommendation]

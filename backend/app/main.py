@@ -7,7 +7,9 @@ from sqlalchemy import text
 
 from app import models
 from app.database import Base, engine
-from app.routers import auth, purchase_requests, vendors, approvals, dashboard
+from app.routers import auth
+from app.routers.government import purchase_requests as gov_pr, vendors as gov_vendors, approvals as gov_approvals, dashboard as gov_dashboard
+from app.routers.vendor_portal import bids as vendor_bids, orders as vendor_orders, negotiation as vendor_negotiation
 from app.compliance.ingest import init_policy_db
 
 Base.metadata.create_all(bind=engine)
@@ -17,7 +19,6 @@ with engine.connect() as conn:
         "vendor_bids": [
             ("original_quoted_price", "FLOAT"),
             ("original_delivery_days", "INTEGER"),
-            ("negotiation_transcript", "TEXT"),
         ],
         "vendors": [
             ("is_local_vendor", "BOOLEAN"),
@@ -56,7 +57,7 @@ except Exception:
     pass
 
 app = FastAPI(
-    title="ProcureIQ - Intelligent NetSuite-Aligned ERP Procurement",
+    title="LokProcure - NetSuite-Aligned Intelligent Dual-Sided ERP Procurement",
     version="1.0.0",
 )
 
@@ -71,15 +72,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
-app.include_router(
-    purchase_requests.router,
-    prefix="/api/purchase-requests",
-    tags=["Purchase Requests"],
-)
-app.include_router(vendors.router, prefix="/api/vendors", tags=["Vendors"])
-app.include_router(approvals.router, prefix="/api/approvals", tags=["Approvals"])
-app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"])
+# Authentication routes -> /api/auth/login, /api/auth/me
+app.include_router(auth.router, prefix="/api", tags=["Authentication"])
+
+# Government routes -> /api/gov/...
+app.include_router(gov_pr.router, prefix="/api/gov", tags=["Gov - Purchase Requests"])
+app.include_router(gov_vendors.router, prefix="/api/gov", tags=["Gov - Vendors"])
+app.include_router(gov_approvals.router, prefix="/api/gov", tags=["Gov - Approvals"])
+app.include_router(gov_dashboard.router, prefix="/api/gov", tags=["Gov - Dashboard"])
+
+# Legacy frontend-compatible routes -> /api/...
+app.include_router(gov_pr.router, prefix="/api", tags=["Legacy - Purchase Requests"])
+app.include_router(gov_vendors.router, prefix="/api", tags=["Legacy - Vendors"])
+app.include_router(gov_approvals.router, prefix="/api", tags=["Legacy - Approvals"])
+app.include_router(gov_dashboard.router, prefix="/api", tags=["Legacy - Dashboard"])
+
+# Vendor Portal routes -> /api/vendor/...
+app.include_router(vendor_bids.router, prefix="/api/vendor/bids", tags=["Vendor - Bids"])
+app.include_router(vendor_orders.router, prefix="/api/vendor/orders", tags=["Vendor - Orders"])
+app.include_router(vendor_negotiation.router, prefix="/api/vendor/negotiation", tags=["Vendor - Negotiation"])
 
 os.makedirs("generated_pos", exist_ok=True)
 
@@ -88,7 +99,7 @@ os.makedirs("generated_pos", exist_ok=True)
 def health_check():
     return {
         "status": "healthy",
-        "system": "ProcureIQ Enterprise ERP",
+        "system": "LokProcure Enterprise ERP",
         "database": "sqlite:///procureiq.db",
         "timestamp": datetime.datetime.utcnow().isoformat(),
     }

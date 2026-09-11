@@ -72,6 +72,7 @@ class PurchaseRequest(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(255), nullable=False)
+    category = Column(String(50), nullable=True)
     item_description = Column(Text, nullable=False)
     quantity = Column(Integer, default=1, nullable=False)
     urgency = Column(String(50), default="Medium", nullable=False)
@@ -125,7 +126,11 @@ class VendorBid(Base):
     original_delivery_days = Column(Integer, nullable=True)
     notes = Column(Text, nullable=True)
     bid_score = Column(Float, default=0.0, nullable=False)
-    negotiation_transcript = Column(Text, nullable=True)
+    created_at = Column(
+        DateTime,
+        default=datetime.datetime.utcnow,
+        nullable=False,
+    )
 
     vendor = relationship("Vendor", back_populates="bids")
     purchase_request = relationship("PurchaseRequest", back_populates="bids")
@@ -135,7 +140,6 @@ class VendorBid(Base):
         cascade="all, delete-orphan",
         order_by="NegotiationSession.session_number",
     )
-
 
 class ApprovalWorkflow(Base):
     __tablename__ = "approval_workflows"
@@ -251,151 +255,111 @@ class ComplianceCheck(Base):
 
 class NegotiationSession(Base):
     __tablename__ = "negotiation_sessions"
+    __table_args__ = (
+        UniqueConstraint("vendor_bid_id", "session_number", name="uq_vendor_bid_session"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
-    vendor_bid_id = Column(
-        Integer,
-        ForeignKey("vendor_bids.id"),
-        nullable=False,
-        index=True,
-    )
+    vendor_bid_id = Column(Integer, ForeignKey("vendor_bids.id"), nullable=False, index=True)
     session_number = Column(Integer, nullable=False)
-    status = Column(
-        String(50),
-        default="INITIATED",
-        nullable=False,
-        index=True,
-    )
+    status = Column(String(50), default="INITIATED", nullable=False)
     current_round = Column(Integer, default=0, nullable=False)
     current_price = Column(Float, nullable=False)
     current_delivery_days = Column(Integer, nullable=False)
-    price_ceiling = Column(Float, nullable=False)
-    delivery_floor = Column(Integer, nullable=False)
-    created_at = Column(
-        DateTime,
-        default=datetime.datetime.utcnow,
-        nullable=False,
-    )
-    updated_at = Column(
-        DateTime,
-        default=datetime.datetime.utcnow,
-        onupdate=datetime.datetime.utcnow,
-        nullable=False,
-    )
+    version = Column(Integer, default=1, nullable=False)
 
-    vendor_bid = relationship(
-        "VendorBid",
-        back_populates="negotiation_sessions",
-    )
-    policy_decisions = relationship(
-        "PolicyDecision",
-        back_populates="negotiation_session",
-        cascade="all, delete-orphan",
-        order_by="PolicyDecision.created_at",
-    )
-    escalations = relationship(
-        "NegotiationEscalation",
-        back_populates="negotiation_session",
-        cascade="all, delete-orphan",
-        order_by="NegotiationEscalation.created_at",
-    )
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
 
-    __table_args__ = (
-        UniqueConstraint(
-            "vendor_bid_id",
-            "session_number",
-            name="uq_negotiation_session_bid_number",
-        ),
-    )
+    vendor_bid = relationship("VendorBid", back_populates="negotiation_sessions")
+    gov_state = relationship("GovNegotiationState", back_populates="negotiation_session", uselist=False, cascade="all, delete-orphan")
+    vendor_state = relationship("VendorNegotiationState", back_populates="negotiation_session", uselist=False, cascade="all, delete-orphan")
+    events = relationship("NegotiationEvent", back_populates="negotiation_session", cascade="all, delete-orphan")
+    policy_decisions = relationship("PolicyDecision", back_populates="negotiation_session", cascade="all, delete-orphan")
+    escalations = relationship("NegotiationEscalation", back_populates="negotiation_session", cascade="all, delete-orphan")
+
+
+class GovNegotiationState(Base):
+    __tablename__ = "gov_negotiation_states"
+
+    id = Column(Integer, primary_key=True, index=True)
+    negotiation_session_id = Column(Integer, ForeignKey("negotiation_sessions.id"), nullable=False, unique=True, index=True)
+    target_price = Column(Float, nullable=False)
+    max_authorized_price = Column(Float, nullable=False)
+    target_delivery = Column(Integer, nullable=False)
+    max_delivery = Column(Integer, nullable=False)
+    strategy = Column(String(50), default="Standard", nullable=False)
+
+    negotiation_session = relationship("NegotiationSession", back_populates="gov_state")
+
+
+class VendorNegotiationState(Base):
+    __tablename__ = "vendor_negotiation_states"
+
+    id = Column(Integer, primary_key=True, index=True)
+    negotiation_session_id = Column(Integer, ForeignKey("negotiation_sessions.id"), nullable=False, unique=True, index=True)
+    target_price = Column(Float, nullable=False)
+    absolute_minimum_price = Column(Float, nullable=False)
+    feasible_delivery = Column(Integer, nullable=False)
+    strategy = Column(String(50), default="Standard", nullable=False)
+
+    negotiation_session = relationship("NegotiationSession", back_populates="vendor_state")
+
+
+class NegotiationEvent(Base):
+    __tablename__ = "negotiation_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    negotiation_session_id = Column(Integer, ForeignKey("negotiation_sessions.id"), nullable=False, index=True)
+    round = Column(Integer, nullable=False)
+    speaker_role = Column(String(50), nullable=False)
+    event_type = Column(String(50), nullable=False)
+    price = Column(Float, nullable=True)
+    delivery_days = Column(Integer, nullable=True)
+    message = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+
+    negotiation_session = relationship("NegotiationSession", back_populates="events")
 
 
 class PolicyDecision(Base):
     __tablename__ = "policy_decisions"
 
     id = Column(Integer, primary_key=True, index=True)
-    negotiation_session_id = Column(
-        Integer,
-        ForeignKey("negotiation_sessions.id"),
-        nullable=False,
-        index=True,
-    )
+    negotiation_session_id = Column(Integer, ForeignKey("negotiation_sessions.id"), nullable=False, index=True)
+    role = Column(String(50), nullable=False, default="GOVERNMENT")
     round = Column(Integer, nullable=False)
+
     evaluated_price = Column(Float, nullable=False)
     evaluated_delivery_days = Column(Integer, nullable=False)
-    decision = Column(String(50), nullable=False)
-    rule_triggered = Column(String(100), nullable=True)
-    threshold_value = Column(Float, nullable=True)
-    actual_value = Column(Float, nullable=True)
-    created_at = Column(
-        DateTime,
-        default=datetime.datetime.utcnow,
-        nullable=False,
-    )
 
-    negotiation_session = relationship(
-        "NegotiationSession",
-        back_populates="policy_decisions",
-    )
+    decision = Column(String(50), nullable=False)
+    rule_triggered = Column(String(255), nullable=False)
+    threshold_value = Column(String(100), nullable=True)
+    actual_value = Column(String(100), nullable=True)
+
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+
+    negotiation_session = relationship("NegotiationSession", back_populates="policy_decisions")
 
 
 class NegotiationEscalation(Base):
     __tablename__ = "negotiation_escalations"
 
     id = Column(Integer, primary_key=True, index=True)
-    negotiation_session_id = Column(
-        Integer,
-        ForeignKey("negotiation_sessions.id"),
-        nullable=False,
-        index=True,
-    )
-    policy_decision_id = Column(
-        Integer,
-        ForeignKey("policy_decisions.id"),
-        nullable=False,
-        index=True,
-    )
-    pr_id = Column(
-        Integer,
-        ForeignKey("purchase_requests.id"),
-        nullable=False,
-        index=True,
-    )
-    vendor_id = Column(
-        Integer,
-        ForeignKey("vendors.id"),
-        nullable=False,
-        index=True,
-    )
-    required_role = Column(String(100), nullable=False)
-    approver_id = Column(
-        Integer,
-        ForeignKey("users.id"),
-        nullable=True,
-        index=True,
-    )
-    status = Column(
-        String(50),
-        default="PENDING",
-        nullable=False,
-        index=True,
-    )
-    reason = Column(String(255), nullable=False)
-    proposed_price = Column(Float, nullable=False)
-    proposed_days = Column(Integer, nullable=False)
-    variance_amount = Column(Float, default=0.0, nullable=False)
-    approver_comment = Column(Text, nullable=True)
-    created_at = Column(
-        DateTime,
-        default=datetime.datetime.utcnow,
-        nullable=False,
-    )
+    negotiation_session_id = Column(Integer, ForeignKey("negotiation_sessions.id"), nullable=False, index=True)
+    role = Column(String(50), nullable=False, default="GOVERNMENT")
+    
+    reason = Column(Text, nullable=False)
+    requested_price = Column(Float, nullable=True)
+    requested_delivery_days = Column(Integer, nullable=True)
+
+    status = Column(String(50), default="PENDING", nullable=False)
+    approver_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    comment = Column(Text, nullable=True)
+
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
     actioned_at = Column(DateTime, nullable=True)
 
-    negotiation_session = relationship(
-        "NegotiationSession",
-        back_populates="escalations",
-    )
-    policy_decision = relationship("PolicyDecision")
-    purchase_request = relationship("PurchaseRequest")
-    vendor = relationship("Vendor")
-    approver = relationship("User")
+    negotiation_session = relationship("NegotiationSession", back_populates="escalations")
+    approver = relationship("User", foreign_keys=[approver_id])
