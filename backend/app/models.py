@@ -287,6 +287,12 @@ class NegotiationSession(Base):
         "VendorBid",
         back_populates="negotiation_sessions",
     )
+    policy_decisions = relationship(
+        "PolicyDecision",
+        back_populates="negotiation_session",
+        cascade="all, delete-orphan",
+        order_by="PolicyDecision.created_at",
+    )
 
     __table_args__ = (
         UniqueConstraint(
@@ -294,4 +300,33 @@ class NegotiationSession(Base):
             "session_number",
             name="uq_negotiation_session_bid_number",
         ),
+    )
+
+
+class PolicyDecision(Base):
+    __tablename__ = "policy_decisions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    negotiation_session_id = Column(
+        Integer,
+        ForeignKey("negotiation_sessions.id"),
+        nullable=False,
+        index=True,
+    )
+    round = Column(Integer, nullable=False)
+    evaluated_price = Column(Float, nullable=False)
+    evaluated_delivery_days = Column(Integer, nullable=False)
+    decision = Column(String(50), nullable=False)
+    rule_triggered = Column(String(100), nullable=True)
+    threshold_value = Column(Float, nullable=True)
+    actual_value = Column(Float, nullable=True)
+    created_at = Column(
+        DateTime,
+        default=datetime.datetime.utcnow,
+        nullable=False,
+    )
+
+    negotiation_session = relationship(
+        "NegotiationSession",
+        back_populates="policy_decisions",
     )
