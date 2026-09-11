@@ -265,7 +265,7 @@ export default function VendorActiveOrders({
                     <div className="p-2 rounded bg-[#f5f4f0] border border-[#e8e6df]">
                       <span className="text-[10px] text-slate-400 block">Est. Budget</span>
                       <strong className="text-slate-900 font-bold">
-                        ${Number(order.estimated_budget || 0).toLocaleString()}
+                        ₹{Number(order.estimated_budget || 0).toLocaleString()}
                       </strong>
                     </div>
 
@@ -331,7 +331,7 @@ export default function VendorActiveOrders({
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">Quoted Price:</span>
-                    <strong className="text-slate-900">${Number(bidPrice).toLocaleString()}</strong>
+                    <strong className="text-slate-900">₹{Number(bidPrice).toLocaleString()}</strong>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">Delivery SLA:</span>
@@ -374,7 +374,7 @@ export default function VendorActiveOrders({
                     PR-{bidModalOrder.id.toString().padStart(4, '0')}: {bidModalOrder.title}
                   </h2>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    Category: <strong>{bidModalOrder.category || 'Industrial Equipment'}</strong> • Qty: <strong>{bidModalOrder.quantity} units</strong> • Est. Budget: <strong>${Number(bidModalOrder.estimated_budget).toLocaleString()}</strong>
+                    Category: <strong>{bidModalOrder.category || 'Industrial Equipment'}</strong> • Qty: <strong>{bidModalOrder.quantity} units</strong> • Est. Budget: <strong>₹{Number(bidModalOrder.estimated_budget).toLocaleString()}</strong>
                   </p>
                 </div>
 
@@ -389,7 +389,7 @@ export default function VendorActiveOrders({
                   {/* Price Input */}
                   <div className="space-y-1">
                     <label className="block text-xs font-semibold text-slate-700">
-                      Total Quoted Price ($ USD) <span className="text-rose-600">*</span>
+                      Total Quoted Price (₹ INR) <span className="text-rose-600">*</span>
                     </label>
                     <div className="relative">
                       <DollarSign className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />

@@ -163,7 +163,7 @@ export default function VendorMyBids({
 
                       <td className="py-3 px-4 text-right font-mono tabular-nums whitespace-nowrap">
                         <div className="font-bold text-slate-900 text-sm">
-                          ${Number(bid.quoted_price).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                          ₹{Number(bid.quoted_price).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                         </div>
                       </td>
 

@@ -90,24 +90,24 @@ export default function ApprovalQueue({
   const getRuleBadge = (rule) => {
     const r = String(rule || '');
     if (r.includes('Rule 1')) {
-      return { label: 'Rule 1: Plant Head CapEx ($100k+)', color: 'bg-slate-100 text-slate-700 border-slate-200 font-mono text-[9px] uppercase font-medium' };
+      return { label: 'Plant Head CapEx ($100k+)', color: 'text-slate-600 bg-[#f5f4f0] border-[#e8e6df]' };
     } else if (r.includes('Rule 2')) {
-      return { label: 'Rule 2: VP Ops Critical (>500)', color: 'bg-slate-100 text-slate-700 border-slate-200 font-mono text-[9px] uppercase font-medium' };
+      return { label: 'VP Ops Critical (>500)', color: 'text-slate-600 bg-[#f5f4f0] border-[#e8e6df]' };
     } else if (r.includes('Rule 3')) {
-      return { label: 'Rule 3: Finance Director (> $50k)', color: 'bg-slate-100 text-slate-700 border-slate-200 font-mono text-[9px] uppercase font-medium' };
+      return { label: 'Finance Director (> $50k)', color: 'text-slate-600 bg-[#f5f4f0] border-[#e8e6df]' };
     } else {
-      return { label: 'Rule 4: Department Manager Standard', color: 'bg-slate-100 text-slate-600 border-slate-200 font-mono text-[9px] uppercase font-medium' };
+      return { label: 'Dept Manager Standard', color: 'text-slate-600 bg-[#f5f4f0] border-[#e8e6df]' };
     }
   };
 
   const getStatusPill = (status) => {
     switch (status) {
       case 'Approved':
-        return 'bg-emerald-50 text-emerald-700 border-emerald-200 font-mono text-[9px] uppercase font-semibold';
+        return 'bg-emerald-50 text-emerald-800 border-emerald-300 font-bold';
       case 'Rejected':
-        return 'bg-rose-50 text-rose-700 border-rose-200 font-mono text-[9px] uppercase font-semibold';
+        return 'bg-rose-50 text-rose-800 border-rose-300 font-bold';
       default:
-        return 'bg-amber-50 text-amber-700 border-amber-200 font-mono text-[9px] uppercase font-semibold';
+        return 'bg-amber-100 text-amber-900 border-amber-300 font-bold';
     }
   };
 
@@ -136,7 +136,7 @@ export default function ApprovalQueue({
               onClick={() => setStatusFilter(tab)}
               className={`px-3 py-1.5 rounded-md font-medium text-xs transition-colors cursor-pointer ${
                 statusFilter === tab
-                  ? 'bg-[#fbfbfa] text-slate-900 border border-[#d8d5ca] shadow-sm font-semibold'
+                  ? 'bg-white text-slate-900 border border-[#d8d5ca] shadow-2xs font-semibold'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-[#e8e6df]/60'
               }`}
             >
@@ -146,24 +146,22 @@ export default function ApprovalQueue({
         </div>
       </div>
 
-      {/* Approver Persona Context Card */}
-      <div className="enterprise-card p-3.5 flex items-center justify-between gap-4">
+      {/* Approver Persona Context Bar */}
+      <div className="p-3 rounded-lg bg-[#fbfbfa] border border-[#e8e6df] flex items-center justify-between gap-4 text-xs">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-md bg-[#f3f2ec] border border-[#e8e6df] flex items-center justify-center text-slate-700">
+          <div className="w-6 h-6 rounded bg-slate-100 border border-slate-300 flex items-center justify-center text-slate-700">
             <User className="w-3.5 h-3.5" />
           </div>
-          <div>
-            <div className="text-[9px] uppercase font-mono text-slate-500">Current Approver Authority</div>
-            <div className="text-xs font-semibold text-slate-900 flex items-center gap-2">
-              {user?.full_name || 'Priya Sharma'}
-              <span className="text-[9px] font-mono uppercase px-1.5 py-0.2 rounded bg-[#f3f2ec] text-slate-600 border border-[#e8e6df] font-medium">
-                {user?.role}
-              </span>
-            </div>
+          <div className="flex items-center gap-2">
+            <span className="text-slate-500 text-[11px]">Approving Authority:</span>
+            <strong className="text-slate-900 font-semibold">{user?.full_name || 'Priya Sharma'}</strong>
+            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-300 font-semibold">
+              {user?.role}
+            </span>
           </div>
         </div>
 
-        <div className="text-[10px] font-mono text-slate-500 hidden sm:block">
+        <div className="text-[11px] font-mono text-slate-500 hidden sm:block">
           Filtered for <strong className="text-slate-800">{user?.role}</strong> delegation
         </div>
       </div>
@@ -172,11 +170,11 @@ export default function ApprovalQueue({
       {loading ? (
         <div className="space-y-3 animate-pulse">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-40 bg-[#fbfbfa] rounded-xl border border-[#e8e6df] shadow-sm" />
+            <div key={i} className="h-36 bg-white rounded-xl border border-[#e8e6df] shadow-2xs" />
           ))}
         </div>
       ) : queue.length === 0 ? (
-        <div className="enterprise-card p-10 text-center space-y-2">
+        <div className="enterprise-card p-12 text-center space-y-2 bg-[#fbfbfa]">
           <CheckCircle2 className="w-8 h-8 text-slate-400 mx-auto" />
           <h3 className="text-sm font-bold text-slate-900">No {statusFilter} Approvals in Queue</h3>
           <p className="text-xs text-slate-500 max-w-md mx-auto">
@@ -188,23 +186,34 @@ export default function ApprovalQueue({
           {queue.map((wf) => {
             const ruleBadge = getRuleBadge(wf.triggered_rule);
             const isPending = wf.status === 'Pending';
+            const isApproved = wf.status === 'Approved';
+            const isRejected = wf.status === 'Rejected';
 
             return (
               <div
                 key={wf.id}
-                className="enterprise-card p-5 space-y-3.5 hover:border-[#d8d5ca] transition-colors"
+                className={`enterprise-card p-4 space-y-3 transition-colors ${
+                  isPending
+                    ? 'border-l-4 border-l-amber-500 shadow-2xs'
+                    : isApproved
+                    ? 'border-l-4 border-l-emerald-500'
+                    : isRejected
+                    ? 'border-l-4 border-l-rose-500'
+                    : ''
+                }`}
               >
                 {/* Top Row: PR ID, Title, Rule, Status */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-[#e8e6df] pb-3">
-                  <div className="flex items-center gap-2.5">
-                    <span className="font-mono text-xs font-bold text-slate-900">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#f0eee6] pb-2.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-mono text-xs font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-300">
                       PR-{(wf.pr_id || 0).toString().padStart(4, '0')}
                     </span>
-                    <h3 className="text-sm font-semibold text-slate-900">{wf.pr_title || 'Purchase Request'}</h3>
+                    <h3 className="text-sm font-bold text-slate-900">{wf.pr_title || 'Purchase Request'}</h3>
+                    <span className="text-[10px] text-slate-500 font-mono">({wf.department || 'Operations'})</span>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-1.5">
-                    {/* Compliance Status Badge (Critical / High Signal) */}
+                    {/* Compliance Status Badge */}
                     {wf.compliance && (
                       <span className={`text-[10px] font-semibold px-2 py-0.5 rounded border flex items-center gap-1 ${
                         wf.compliance.compliant
@@ -217,7 +226,7 @@ export default function ApprovalQueue({
                           </>
                         ) : (
                           <>
-                            <ShieldAlert className="w-3.5 h-3.5 text-rose-600" /> Policy Alert ({Array.isArray(wf.compliance.violations) ? wf.compliance.violations.length : 1})
+                            <ShieldAlert className="w-3.5 h-3.5 text-rose-600" /> Policy Alert
                           </>
                         )}
                       </span>
@@ -227,26 +236,23 @@ export default function ApprovalQueue({
                       {ruleBadge.label}
                     </span>
                     <span className={`text-[9px] font-mono px-2 py-0.5 rounded border ${getStatusPill(wf.status)}`}>
-                      {wf.status || 'Pending'}
+                      {isPending ? 'Action Required' : (wf.status || 'Pending')}
                     </span>
                   </div>
                 </div>
 
-                {/* Middle Grid: PR Details & Supplier Bid Summary */}
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-center">
+                {/* Middle Grid: PR Details & Flattened Supplier Bid Summary */}
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
                   {/* Left PR Info */}
-                  <div className="md:col-span-7 space-y-2 text-xs">
+                  <div className="md:col-span-7 space-y-1.5 text-xs">
                     <p className="text-slate-600 leading-relaxed text-xs">{wf.item_description || 'No description provided.'}</p>
                     
-                    <div className="flex flex-wrap gap-4 text-slate-500 pt-0.5">
+                    <div className="flex flex-wrap gap-4 text-slate-500 pt-1 text-[11px]">
                       <span className="flex items-center gap-1">
-                        <Building className="w-3.5 h-3.5 text-slate-400" /> Dept: <strong className="text-slate-800">{wf.department || 'Operations'}</strong>
+                        <User className="w-3 h-3 text-slate-400" /> Requester: <strong className="text-slate-800">{wf.requester?.full_name || 'Priya Sharma'}</strong>
                       </span>
                       <span className="flex items-center gap-1">
-                        <User className="w-3.5 h-3.5 text-slate-400" /> Requester: <strong className="text-slate-800">{wf.requester?.full_name || 'Priya Sharma'}</strong>
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <DollarSign className="w-3.5 h-3.5 text-slate-400" /> Budget: <strong className="text-emerald-700 font-mono">${(wf.estimated_budget || 0).toLocaleString()}</strong>
+                        <DollarSign className="w-3 h-3 text-slate-400" /> Budget: <strong className="text-slate-900 font-mono font-bold">${(wf.estimated_budget || 0).toLocaleString()}</strong>
                       </span>
                     </div>
 
@@ -255,64 +261,64 @@ export default function ApprovalQueue({
                       <div className="mt-2 p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-xs space-y-1">
                         <div className="font-semibold text-rose-800 flex items-center gap-1 text-[11px]">
                           <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                          RAG Policy Guard Alerts:
+                          Policy Violations:
                         </div>
                         <div className="space-y-0.5 pl-4">
                           {(Array.isArray(wf.compliance.violations) ? wf.compliance.violations : []).map((v, idx) => (
                             <div key={idx} className="text-[11px] text-slate-700">
-                              <strong className="text-rose-800">{v.rule_name || 'Policy Rule'} ({v.severity || 'Medium'}):</strong> {v.explanation || ''}
+                              <strong className="text-rose-800">{v.rule_name || 'Policy Rule'}:</strong> {v.explanation || ''}
                             </div>
                           ))}
                         </div>
                         {wf.compliance.required_action && (
                           <div className="text-[10px] text-blue-700 pt-0.5 border-t border-rose-200">
-                            <strong>Action:</strong> {wf.compliance.required_action}
+                            <strong>Required Action:</strong> {wf.compliance.required_action}
                           </div>
                         )}
                       </div>
                     )}
 
                     {wf.comment && (
-                      <div className="mt-1.5 p-2 rounded-lg bg-[#f5f4f0] border border-[#e8e6df] text-[11px] text-slate-600 flex items-start gap-2">
+                      <div className="mt-1 p-2 rounded-lg bg-[#f5f4f0] border border-[#e8e6df] text-[11px] text-slate-600 flex items-start gap-2">
                         <MessageSquare className="w-3 h-3 text-slate-400 shrink-0 mt-0.5" />
                         <span><strong>Remarks:</strong> {wf.comment}</span>
                       </div>
                     )}
                   </div>
 
-                  {/* Right: Recommended Supplier Bid Card */}
-                  <div className="md:col-span-5 p-3.5 rounded-lg bg-[#f5f4f0] border border-[#e8e6df] space-y-2">
+                  {/* Right: Flattened Recommended Supplier Commercial Terms */}
+                  <div className="md:col-span-5 p-3 rounded-lg bg-[#fbfbfa] border border-[#e8e6df] space-y-1.5">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-500 text-[11px] font-medium flex items-center gap-1">
-                        <Award className="w-3.5 h-3.5 text-amber-500" /> Winning Bidder:
+                      <span className="text-slate-900 text-xs font-bold flex items-center gap-1.5">
+                        <Award className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                        {wf.top_bid?.vendor_name || 'Recommended Supplier'}
                       </span>
-                      <span className="text-emerald-700 font-semibold font-mono text-xs">
+                      <span className="text-emerald-700 font-bold font-mono text-xs">
                         Score: {wf.top_bid?.bid_score?.toFixed(1) || '95.0'}/100
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-semibold text-slate-900 text-xs">{wf.top_bid?.vendor_name || 'Primary Supplier'}</div>
-                        <div className="text-[10px] text-slate-500">
-                          {wf.top_bid?.pricing_tier || 'Enterprise Tier-1'} • SLA: {wf.top_bid?.delivery_days || 3}d
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-xs font-mono font-bold text-slate-900">
+                    <div className="flex items-center justify-between pt-1 border-t border-[#f0eee6] text-xs">
+                      <span className="text-[10px] text-slate-500 font-mono">
+                        {wf.top_bid?.pricing_tier || 'Standard'} • {wf.top_bid?.delivery_days || 3}d SLA
+                      </span>
+                      <div className="text-right font-mono">
+                        <span className="text-sm font-extrabold text-slate-900">
                           ${(wf.top_bid?.quoted_price || wf.estimated_budget || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                        </div>
-                        <div className="text-[10px] text-emerald-700 font-mono font-medium">
-                          Savings: ${Math.max(0, (wf.estimated_budget || 0) - (wf.top_bid?.quoted_price || wf.estimated_budget || 0)).toLocaleString()}
-                        </div>
+                        </span>
+                        {(wf.estimated_budget || 0) > (wf.top_bid?.quoted_price || 0) && (
+                          <span className="text-[10px] text-emerald-700 font-medium ml-1.5 block">
+                            -${Math.max(0, (wf.estimated_budget || 0) - (wf.top_bid?.quoted_price || wf.estimated_budget || 0)).toLocaleString()} vs budget
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Bottom Row: Actions */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2.5 border-t border-[#e8e6df]">
-                  <div className="text-[10px] text-slate-500 flex items-center gap-1">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2.5 border-t border-[#f0eee6]">
+                  <div className="text-[10px] text-slate-500 flex items-center gap-1 font-mono">
                     <Clock className="w-3 h-3" /> Submitted {wf.created_at ? new Date(wf.created_at).toLocaleDateString() : 'Recently'}
                   </div>
 

@@ -13,7 +13,9 @@ import {
   Award,
   ChevronRight,
   TrendingUp,
-  Tag
+  Tag,
+  ShieldCheck,
+  Truck
 } from 'lucide-react';
 import { prAPI, vendorAPI } from '../../api';
 
@@ -72,12 +74,21 @@ export default function GovActiveBids({
   const activePr = prs.find(p => p.id === Number(selectedPrId));
   const recommendations = bidsData?.recommendations || [];
 
+  // Summary figures
+  const lowestPrice = recommendations.length > 0
+    ? Math.min(...recommendations.map(r => r.quoted_price || 0))
+    : null;
+  const shortestDelivery = recommendations.length > 0
+    ? Math.min(...recommendations.map(r => r.delivery_days || 999))
+    : null;
+  const topVendor = recommendations[0]?.vendor_name || null;
+
   const getTierBadge = (tier) => {
     switch (tier) {
       case 'Tier-1 Enterprise':
         return 'bg-blue-50 text-blue-700 border-blue-200';
       case 'Tier-2 Preferred':
-        return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+        return 'bg-slate-100 text-slate-700 border-slate-200';
       case 'Tier-3 Local Incubator':
         return 'bg-emerald-50 text-emerald-700 border-emerald-200';
       default:
@@ -124,20 +135,20 @@ export default function GovActiveBids({
         )}
       </div>
 
-      {/* PR Selector Dropdown Bar */}
-      <div className="enterprise-card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#fbfbfa]">
+      {/* PR Selector & Context Strip */}
+      <div className="enterprise-card p-3.5 bg-[#fbfbfa] flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex items-center gap-2.5 flex-1 min-w-0">
-          <label className="text-xs font-bold text-slate-700 font-mono uppercase whitespace-nowrap">
+          <label className="text-[10px] font-bold text-slate-600 font-mono uppercase whitespace-nowrap">
             Procurement Order:
           </label>
           <select
             value={selectedPrId || ''}
             onChange={(e) => setSelectedPrId(Number(e.target.value))}
-            className="w-full sm:max-w-xl bg-white border border-[#dcd9ce] rounded-lg px-3 py-1.5 text-xs text-slate-900 font-medium focus:outline-none focus:border-blue-500 cursor-pointer shadow-sm"
+            className="w-full md:max-w-xl bg-white border border-[#dcd9ce] rounded-lg px-3 py-1.5 text-xs text-slate-900 font-medium focus:outline-none focus:border-blue-500 cursor-pointer shadow-2xs font-mono"
           >
             {prs.map((p) => (
               <option key={p.id} value={p.id}>
-                PR-{p.id.toString().padStart(4, '0')}: {p.title} (${Number(p.estimated_budget).toLocaleString()} • {p.category || 'Industrial Equipment'})
+                PR-{p.id.toString().padStart(4, '0')}: {p.title} (₹{Number(p.estimated_budget).toLocaleString()} • {p.category || 'Industrial Equipment'})
               </option>
             ))}
           </select>
@@ -145,23 +156,53 @@ export default function GovActiveBids({
 
         {activePr && (
           <div className="flex items-center gap-2 text-xs font-mono shrink-0">
-            <span className="px-2 py-0.5 rounded bg-indigo-50 border border-indigo-200 text-indigo-700 font-medium">
+            <span className="px-2 py-0.5 rounded bg-slate-100 border border-slate-300 text-slate-700 font-medium">
               {activePr.category || 'Industrial Equipment'}
             </span>
-            <span className="px-2 py-0.5 rounded bg-[#f3f2ec] border border-[#e8e6df] text-slate-700">
-              Budget: <strong>${Number(activePr.estimated_budget).toLocaleString()}</strong>
+            <span className="px-2.5 py-0.5 rounded bg-white border border-[#e8e6df] text-slate-800 shadow-2xs">
+              Budget: <strong className="text-slate-900">₹{Number(activePr.estimated_budget).toLocaleString()}</strong>
             </span>
           </div>
         )}
       </div>
 
-      {/* Active Bids Table */}
-      {error && (
-        <div className="p-4 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs">
-          {error}
+      {/* Quick Summary Highlights Bar (Clean & Scannable) */}
+      {!loadingBids && recommendations.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="p-2.5 rounded-lg bg-white border border-[#e8e6df] shadow-2xs">
+            <span className="text-[10px] font-mono uppercase text-slate-500 block">Total Active Bids</span>
+            <span className="text-base font-bold font-mono text-slate-900">{recommendations.length} Proposals</span>
+          </div>
+          <div className="p-2.5 rounded-lg bg-white border border-[#e8e6df] shadow-2xs">
+            <span className="text-[10px] font-mono uppercase text-slate-500 block">Lowest Quoted Price</span>
+            <span className="text-base font-bold font-mono text-emerald-700">
+              ${lowestPrice !== null ? Number(lowestPrice).toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '---'}
+            </span>
+          </div>
+          <div className="p-2.5 rounded-lg bg-white border border-[#e8e6df] shadow-2xs">
+            <span className="text-[10px] font-mono uppercase text-slate-500 block">Fastest Delivery SLA</span>
+            <span className="text-base font-bold font-mono text-blue-700">
+              {shortestDelivery !== null ? `${shortestDelivery} days` : '---'}
+            </span>
+          </div>
+          <div className="p-2.5 rounded-lg bg-white border border-[#e8e6df] shadow-2xs">
+            <span className="text-[10px] font-mono uppercase text-slate-500 block">Top Algorithmic Match</span>
+            <span className="text-xs font-bold text-slate-900 truncate block mt-0.5">
+              {topVendor || '---'}
+            </span>
+          </div>
         </div>
       )}
 
+      {/* Error Message */}
+      {error && (
+        <div className="p-4 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      {/* Table Content */}
       {loadingBids ? (
         <div className="enterprise-card p-12 text-center space-y-3">
           <div className="w-8 h-8 border-2 border-blue-600/30 border-t-blue-600 rounded-full animate-spin mx-auto" />
@@ -177,31 +218,31 @@ export default function GovActiveBids({
         </div>
       ) : (
         <div className="enterprise-card overflow-hidden">
-          <div className="p-4 border-b border-[#e8e6df] bg-[#fbfbfa] flex items-center justify-between">
+          <div className="p-3.5 border-b border-[#e8e6df] bg-[#fbfbfa] flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-slate-900">
-                Live Supplier Quotations ({recommendations.length} Bids Evaluated)
+              <span className="text-xs font-bold text-slate-900 font-mono uppercase tracking-wider">
+                Supplier Quotations ({recommendations.length})
               </span>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">
-                Bilateral Negotiation Ready
+              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">
+                Autonomous Negotiation Ready
               </span>
             </div>
-            <span className="text-[10px] font-mono text-slate-400">
-              Deterministic Scoring + Gemini 2.5 Flash Audited
+            <span className="text-[10px] font-mono text-slate-500 hidden sm:inline">
+              Ranked by Multi-Criteria Utility Model (100 pts)
             </span>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="border-b border-[#e8e6df] bg-[#f5f4f0] text-slate-500 font-mono text-[10px] uppercase tracking-wider">
-                  <th className="py-3 px-4 font-semibold">Rank &amp; Vendor</th>
-                  <th className="py-3 px-4 font-semibold text-right">Quoted Price</th>
-                  <th className="py-3 px-4 font-semibold text-center">Delivery SLA</th>
-                  <th className="py-3 px-4 font-semibold text-center">Reliability</th>
-                  <th className="py-3 px-4 font-semibold text-center">Composite Score</th>
-                  <th className="py-3 px-4 font-semibold">Commercial Notes</th>
-                  <th className="py-3 px-4 font-semibold text-right">Actions</th>
+                <tr className="border-b border-[#e8e6df] bg-[#f5f4f0] text-slate-600 font-mono text-[10px] uppercase tracking-wider">
+                  <th className="py-2.5 px-4 font-semibold">Rank &amp; Supplier</th>
+                  <th className="py-2.5 px-4 font-semibold text-right">Quoted Price</th>
+                  <th className="py-2.5 px-4 font-semibold text-center">Delivery SLA</th>
+                  <th className="py-2.5 px-4 font-semibold text-center">Reliability</th>
+                  <th className="py-2.5 px-4 font-semibold text-center">Composite Score</th>
+                  <th className="py-2.5 px-4 font-semibold text-center">Status</th>
+                  <th className="py-2.5 px-4 font-semibold text-right">Available Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#e8e6df]">
@@ -210,78 +251,100 @@ export default function GovActiveBids({
                   const isTopRank = idx === 0;
 
                   return (
-                    <tr key={bid.bid_id || bid.vendor_id} className="hover:bg-[#f5f4f0]/60 transition-colors">
-                      <td className="py-3.5 px-4 min-w-[200px]">
-                        <div className="flex items-center gap-2">
-                          <span className="w-5 h-5 rounded-full bg-[#f3f2ec] border border-[#e8e6df] flex items-center justify-center font-mono text-[10px] font-bold text-slate-700 shrink-0">
+                    <tr
+                      key={bid.bid_id || bid.vendor_id}
+                      className={`transition-colors ${
+                        isTopRank
+                          ? 'bg-blue-50/30 hover:bg-blue-50/60'
+                          : 'hover:bg-[#f5f4f0]/60'
+                      }`}
+                    >
+                      {/* Rank & Supplier */}
+                      <td className="py-3 px-4 min-w-[220px]">
+                        <div className="flex items-center gap-2.5">
+                          <span className={`w-5 h-5 rounded-full flex items-center justify-center font-mono text-[10px] font-bold shrink-0 ${
+                            isTopRank
+                              ? 'bg-blue-600 text-white shadow-2xs'
+                              : 'bg-[#f3f2ec] text-slate-700 border border-[#e8e6df]'
+                          }`}>
                             #{idx + 1}
                           </span>
                           <div className="truncate">
-                            <div className="font-bold text-slate-900 flex items-center gap-1.5">
-                              <span>{bid.vendor_name}</span>
+                            <div className="font-bold text-slate-900 flex items-center gap-1.5 flex-wrap">
+                              <span className="text-xs">{bid.vendor_name}</span>
                               {isTopRank && (
-                                <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-blue-50 text-blue-700 border border-blue-200 font-semibold">
+                                <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-blue-100 text-blue-800 border border-blue-200 font-bold">
                                   Top Match
                                 </span>
                               )}
                               {bid.is_incubator && (
-                                <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">
+                                <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium">
                                   Local SMB
                                 </span>
                               )}
                             </div>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                              <span className={`text-[9px] px-1.5 py-0.2 rounded border font-medium ${getTierBadge(bid.pricing_tier)}`}>
+                            <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-500 font-mono">
+                              <span className={`px-1 py-0.2 rounded border font-medium ${getTierBadge(bid.pricing_tier)}`}>
                                 {bid.pricing_tier}
                               </span>
-                              <span className="text-[10px] text-slate-400 font-mono">{bid.contact_email}</span>
+                              <span className="text-slate-400 truncate max-w-[120px]">{bid.contact_email}</span>
                             </div>
+                            {bid.notes && (
+                              <p className="text-[10px] text-slate-500 truncate max-w-xs mt-0.5" title={bid.notes}>
+                                Note: {bid.notes}
+                              </p>
+                            )}
                           </div>
                         </div>
                       </td>
 
-                      <td className="py-3.5 px-4 text-right font-mono tabular-nums whitespace-nowrap">
-                        <div className="font-bold text-slate-900 text-sm">
-                          ${Number(bid.quoted_price).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      {/* Quoted Price (Primary Number) */}
+                      <td className="py-3 px-4 text-right font-mono tabular-nums whitespace-nowrap">
+                        <div className="font-extrabold text-slate-900 text-sm">
+                          ₹{Number(bid.quoted_price).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                         </div>
                         {bid.original_quoted_price && bid.original_quoted_price > bid.quoted_price && (
-                          <div className="text-[10px] text-emerald-600 line-through">
-                            ${Number(bid.original_quoted_price).toLocaleString()}
+                          <div className="text-[10px] text-emerald-700 line-through">
+                            ₹{Number(bid.original_quoted_price).toLocaleString()}
                           </div>
                         )}
                       </td>
 
-                      <td className="py-3.5 px-4 text-center font-mono whitespace-nowrap">
-                        <span className="font-bold text-slate-800">{bid.delivery_days} days</span>
+                      {/* Delivery SLA */}
+                      <td className="py-3 px-4 text-center font-mono whitespace-nowrap">
+                        <span className="font-bold text-slate-800 text-xs">{bid.delivery_days} days</span>
                       </td>
 
-                      <td className="py-3.5 px-4 text-center font-mono whitespace-nowrap">
-                        <span className="px-2 py-0.5 rounded bg-[#f3f2ec] text-slate-800 text-[11px] font-medium">
+                      {/* Reliability */}
+                      <td className="py-3 px-4 text-center font-mono whitespace-nowrap">
+                        <span className="text-xs text-slate-700 font-semibold">
                           {bid.reliability_score}%
                         </span>
                       </td>
 
-                      <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                        <div className="inline-flex items-center gap-1.5 font-mono">
-                          <span className={`font-bold text-xs px-2 py-0.5 rounded border ${
-                            score >= 90
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                              : score >= 80
-                              ? 'bg-blue-50 text-blue-700 border-blue-200'
-                              : 'bg-amber-50 text-amber-700 border-amber-200'
-                          }`}>
-                            {score.toFixed(1)}
-                          </span>
-                        </div>
+                      {/* Composite Score */}
+                      <td className="py-3 px-4 text-center whitespace-nowrap">
+                        <span className={`inline-block font-mono font-bold text-xs px-2 py-0.5 rounded border ${
+                          score >= 90
+                            ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                            : score >= 80
+                            ? 'bg-blue-50 text-blue-800 border-blue-300'
+                            : 'bg-amber-50 text-amber-800 border-amber-300'
+                        }`}>
+                          {score.toFixed(1)}/100
+                        </span>
                       </td>
 
-                      <td className="py-3.5 px-4 max-w-xs text-slate-600 text-[11px]">
-                        <p className="truncate" title={bid.notes || 'No commercial notes provided.'}>
-                          {bid.notes || <span className="text-slate-400 italic">Standard quotation terms</span>}
-                        </p>
+                      {/* Status (Clean and uncluttered) */}
+                      <td className="py-3 px-4 text-center whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                          Active
+                        </span>
                       </td>
 
-                      <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                      {/* Actions */}
+                      <td className="py-3 px-4 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             type="button"

@@ -212,21 +212,28 @@ export default function GovNegotiations({
                     key={sId}
                     type="button"
                     onClick={() => setSelectedSessionId(sId)}
-                    className={`w-full text-left p-3 rounded-lg border transition-all cursor-pointer ${
+                    className={`w-full text-left p-2.5 rounded-lg border transition-all cursor-pointer ${
                       isSelected
-                        ? 'bg-blue-50/70 border-blue-300 shadow-sm'
+                        ? 'bg-blue-50/80 border-blue-400 shadow-xs ring-1 ring-blue-500/20'
+                        : isEscalated
+                        ? 'bg-amber-50/40 hover:bg-amber-50/70 border-amber-300 shadow-2xs'
                         : 'bg-white hover:bg-[#f5f4f0] border-[#e8e6df]'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-[#f3f2ec] text-slate-700 font-bold border border-[#e8e6df]">
                             #{sId}
                           </span>
-                          <span className="text-xs font-bold text-slate-900 truncate">
+                          <span className="text-xs font-bold text-slate-900 truncate max-w-[140px]">
                             {s.vendor_name || 'Qualified Vendor'}
                           </span>
+                          {isEscalated && (
+                            <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300 font-bold animate-pulse">
+                              Action Req
+                            </span>
+                          )}
                         </div>
                         <div className="text-[11px] text-slate-500 truncate mt-0.5">
                           {s.pr_title || `PR #${s.purchase_request_id}`}
@@ -240,7 +247,7 @@ export default function GovNegotiations({
                             : s.status === 'PENDING_VENDOR_APPROVAL'
                             ? 'bg-purple-50 text-purple-800 border-purple-300'
                             : ['PENDING_GOV_APPROVAL', 'PENDING_APPROVAL', 'ESCALATED'].includes(s.status)
-                            ? 'bg-amber-50 text-amber-900 border-amber-400'
+                            ? 'bg-amber-100 text-amber-900 border-amber-400'
                             : s.status === 'REJECTED'
                             ? 'bg-rose-50 text-rose-800 border-rose-300'
                             : s.status === 'RESUMED'
@@ -254,9 +261,9 @@ export default function GovNegotiations({
                       </div>
                     </div>
 
-                    <div className="mt-2 pt-2 border-t border-[#f0eee6] flex items-center justify-between text-[10px] font-mono text-slate-600">
-                      <span>Offer: <strong>${Number(s.current_price || 0).toLocaleString()}</strong></span>
-                      <span>SLA: <strong>{s.current_delivery_days || '--'}d</strong></span>
+                    <div className="mt-1.5 pt-1.5 border-t border-[#f0eee6] flex items-center justify-between text-[10px] font-mono text-slate-600">
+                      <span>Offer: <strong className="text-slate-900">₹{Number(s.current_price || 0).toLocaleString()}</strong></span>
+                      <span>SLA: <strong className="text-slate-900">{s.current_delivery_days || '--'}d</strong></span>
                       <span>Round {s.current_round ?? 0}</span>
                     </div>
                   </button>

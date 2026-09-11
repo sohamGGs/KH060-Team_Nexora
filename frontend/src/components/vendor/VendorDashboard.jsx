@@ -59,7 +59,7 @@ export default function VendorDashboard({
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#e8e6df] pb-5">
         <div>
-          <span className="text-[10px] uppercase font-mono tracking-widest text-purple-600 font-bold block mb-1">
+          <span className="text-[10px] uppercase font-mono tracking-widest text-slate-500 font-bold block mb-1">
             Supplier Operations Portal
           </span>
           <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
@@ -74,7 +74,7 @@ export default function VendorDashboard({
           <button
             type="button"
             onClick={() => onNavigateToTab('vendor_active_orders')}
-            className="btn-primary bg-purple-600 hover:bg-purple-700"
+            className="btn-primary bg-blue-600 hover:bg-blue-700 text-white"
           >
             <ShoppingBag className="w-3.5 h-3.5" />
             <span>Browse RFQ Marketplace</span>
@@ -123,7 +123,7 @@ export default function VendorDashboard({
             <span className="text-[10px] font-bold text-slate-500 font-mono uppercase tracking-wider">
               My Submitted Bids
             </span>
-            <div className="w-7 h-7 rounded-md bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-600">
+            <div className="w-7 h-7 rounded-md bg-purple-50 border border-purple-200 flex items-center justify-center text-slate-500">
               <FileCheck className="w-3.5 h-3.5" />
             </div>
           </div>
@@ -141,7 +141,7 @@ export default function VendorDashboard({
             <span className="text-[10px] font-bold text-slate-500 font-mono uppercase tracking-wider">
               AI Negotiations
             </span>
-            <div className="w-7 h-7 rounded-md bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600">
+            <div className="w-7 h-7 rounded-md bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-700">
               <MessageSquare className="w-3.5 h-3.5" />
             </div>
           </div>
@@ -179,7 +179,7 @@ export default function VendorDashboard({
           <div className="flex items-center justify-between border-b border-[#e8e6df] pb-3">
             <div>
               <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <ShoppingBag className="w-4 h-4 text-purple-600" />
+                <ShoppingBag className="w-4 h-4 text-slate-500" />
                 Featured Procurement Orders Available for Bidding
               </h3>
               <p className="text-[11px] text-slate-500">
@@ -189,7 +189,7 @@ export default function VendorDashboard({
             <button
               type="button"
               onClick={() => onNavigateToTab('vendor_active_orders')}
-              className="text-xs font-semibold text-purple-600 hover:text-purple-700 flex items-center gap-1"
+              className="text-xs font-semibold text-slate-500 hover:text-blue-700 flex items-center gap-1"
             >
               <span>View All ({orders.length})</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -198,7 +198,7 @@ export default function VendorDashboard({
 
           {loading ? (
             <div className="py-8 text-center">
-              <div className="w-6 h-6 border-2 border-purple-600/30 border-t-purple-600 rounded-full animate-spin mx-auto" />
+              <div className="w-6 h-6 border-2 border-blue-600/30 border-t-blue-600 rounded-full animate-spin mx-auto" />
             </div>
           ) : orders.length === 0 ? (
             <div className="py-8 text-center text-xs text-slate-500">
@@ -209,11 +209,11 @@ export default function VendorDashboard({
               {orders.slice(0, 4).map((order) => (
                 <div
                   key={order.id}
-                  className="p-3.5 rounded-lg border border-[#e8e6df] bg-white hover:border-purple-300 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                  className="p-3.5 rounded-lg border border-[#e8e6df] bg-white hover:border-blue-300 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                 >
                   <div className="min-w-0 space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-purple-50 text-purple-700 font-bold border border-purple-200">
+                      <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-purple-50 text-blue-700 font-bold border border-purple-200">
                         PR-{order.id.toString().padStart(4, '0')}
                       </span>
                       <span className="text-xs font-bold text-slate-900 truncate">
@@ -237,14 +237,14 @@ export default function VendorDashboard({
                     <div className="text-right font-mono">
                       <span className="text-[10px] text-slate-400 block">Est. Budget</span>
                       <span className="text-xs font-bold text-slate-900">
-                        ${Number(order.estimated_budget || 0).toLocaleString()}
+                        ₹{Number(order.estimated_budget || 0).toLocaleString()}
                       </span>
                     </div>
 
                     <button
                       type="button"
                       onClick={() => onSelectOrderToBid(order)}
-                      className="btn-primary bg-purple-600 hover:bg-purple-700 text-xs py-1.5 px-3"
+                      className="btn-primary bg-blue-600 hover:bg-blue-700 text-white text-xs py-1.5 px-3"
                     >
                       <span>Submit Bid</span>
                       <ChevronRight className="w-3 h-3" />
@@ -271,7 +271,7 @@ export default function VendorDashboard({
             <button
               type="button"
               onClick={() => onNavigateToTab('vendor_my_bids')}
-              className="text-xs font-semibold text-purple-600 hover:text-purple-700 flex items-center gap-1"
+              className="text-xs font-semibold text-slate-500 hover:text-blue-700 flex items-center gap-1"
             >
               <span>My Bids ({myBids.length})</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -280,7 +280,7 @@ export default function VendorDashboard({
 
           {loading ? (
             <div className="py-8 text-center">
-              <div className="w-6 h-6 border-2 border-purple-600/30 border-t-purple-600 rounded-full animate-spin mx-auto" />
+              <div className="w-6 h-6 border-2 border-blue-600/30 border-t-blue-600 rounded-full animate-spin mx-auto" />
             </div>
           ) : myBids.length === 0 ? (
             <div className="py-8 text-center text-xs text-slate-500">
@@ -303,7 +303,7 @@ export default function VendorDashboard({
                   </div>
 
                   <div className="flex items-center justify-between text-[11px] font-mono text-slate-600 pt-0.5">
-                    <span>Quoted: <strong className="text-slate-900">${Number(bid.quoted_price).toLocaleString()}</strong></span>
+                    <span>Quoted: <strong className="text-slate-900">₹{Number(bid.quoted_price).toLocaleString()}</strong></span>
                     <span>SLA: <strong className="text-slate-800">{bid.delivery_days}d</strong></span>
                     <span className="text-slate-400">{bid.created_at ? new Date(bid.created_at).toLocaleDateString() : 'Active'}</span>
                   </div>

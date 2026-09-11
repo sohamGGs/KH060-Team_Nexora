@@ -45,6 +45,7 @@ export default function VendorComparison({
   const [generatingPo, setGeneratingPo] = useState(false);
   const [error, setError] = useState('');
   const [poSuccess, setPoSuccess] = useState(null);
+  const [showDetailedScoring, setShowDetailedScoring] = useState(false);
 
   // Negotiation States
   const [isNegotiating, setIsNegotiating] = useState(false);
@@ -380,7 +381,7 @@ export default function VendorComparison({
           <div className="flex items-center gap-3 text-xs">
             <div className="px-3 py-1.5 rounded-lg bg-[#f5f4f0] border border-[#e8e6df]">
               <span className="text-slate-500 text-[9px] uppercase font-mono block">Estimated Budget</span>
-              <span className="font-mono tabular-nums font-bold text-slate-900">${(prDetail.estimated_budget || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+              <span className="font-mono tabular-nums font-bold text-slate-900">${(prDetail.estimated_budget || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
             </div>
             <div className="px-3 py-1.5 rounded-lg bg-[#f5f4f0] border border-[#e8e6df]">
               <span className="text-slate-500 text-[9px] uppercase font-mono block">Department</span>
@@ -419,172 +420,8 @@ export default function VendorComparison({
         </div>
       )}
 
-      {/* --- AUTONOMOUS MULTI-AGENT NEGOTIATION TRANSCRIPT PANEL --- */}
-      {(isNegotiating || (negotiationData && Array.isArray(negotiationData.results) && negotiationData.results.length > 0)) && (
-        <div className="enterprise-card p-5 space-y-4 animate-fade-in">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#e8e6df] pb-3">
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600">
-                <Bot className="w-4 h-4" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-sm font-bold text-slate-900">LangGraph Multi-Agent Negotiation Transcript</h2>
-                  <span className="text-[9px] font-medium px-1.5 py-0.2 rounded bg-[#f3f2ec] text-slate-600 border border-[#e8e6df]">
-                    3-Round StateGraph
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  Simultaneous multi-round bargaining between BuyerAgent and top-ranked supplier personas.
-                </p>
-              </div>
-            </div>
-
-            {/* Total Savings Pill */}
-            {negotiationData && (
-              <div className="flex items-center gap-2.5 self-start sm:self-auto bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg">
-                <span className="text-[10px] text-emerald-800 uppercase font-semibold">Net Savings:</span>
-                <span className="text-xs font-bold text-emerald-700 font-mono">
-                  +${(negotiationData.total_savings || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                </span>
-                <span className="text-[11px] text-emerald-600 font-mono">
-                  ({(negotiationData.total_savings_pct || 0).toFixed(1)}%)
-                </span>
-              </div>
-            )}
-          </div>
-
-          {isNegotiating ? (
-            <div className="py-10 text-center space-y-3">
-              <div className="w-8 h-8 border-2 border-blue-600/20 border-t-blue-600 rounded-full animate-spin mx-auto" />
-              <div className="space-y-0.5">
-                <h3 className="text-xs font-semibold text-slate-900">Negotiation in Progress</h3>
-                <p className="text-[11px] text-slate-500">
-                  Orchestrating price discovery, persona counter-offers, and SLA settlement...
-                </p>
-              </div>
-            </div>
-          ) : (negotiationData && Array.isArray(negotiationData.results)) && (
-            <div className="space-y-4">
-              {/* 3-Column Messenger Grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                {negotiationData.results.map((vr) => {
-                  const hasSavings = (vr.savings_amount ?? vr.savings ?? 0) > 0;
-                  const isHeld = vr.status === 'held';
-                  const transcript = Array.isArray(vr.transcript) ? vr.transcript : (Array.isArray(vr.events) ? vr.events : []);
-
-                  return (
-                    <div
-                      key={vr.vendor_id}
-                      className="rounded-xl bg-[#fbfbfa] border border-[#e8e6df] flex flex-col justify-between overflow-hidden shadow-sm"
-                    >
-                      {/* Column Header: Vendor Persona & Delta */}
-                      <div className="p-3.5 bg-[#f5f4f0] border-b border-[#e8e6df] space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <span className={`text-[9px] font-medium px-1.5 py-0.2 rounded border ${getTierBadge(vr.pricing_tier)}`}>
-                            {vr.pricing_tier || 'Standard'}
-                          </span>
-                          {isHeld ? (
-                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#f3f2ec] text-slate-600 border border-[#e8e6df]">
-                              Standard Quote
-                            </span>
-                          ) : hasSavings ? (
-                            <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono">
-                              -${Number(vr.savings_amount ?? vr.savings ?? 0).toLocaleString()} ({Number(vr.savings_pct ?? vr.savings_percentage ?? 0).toFixed(1)}%)
-                            </span>
-                          ) : (
-                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#f3f2ec] text-slate-600 border border-[#e8e6df]">
-                              Held Firm
-                            </span>
-                          )}
-                        </div>
-
-                        <div>
-                          <h4 className="text-xs font-bold text-slate-900 truncate">{vr.vendor_name}</h4>
-                          <div className="flex items-center justify-between text-xs pt-0.5 font-mono">
-                            <span className="text-slate-500 text-[11px]">
-                              Init: <span className="line-through">${Number(vr.original_price ?? vr.quoted_price ?? 0).toLocaleString()}</span>
-                            </span>
-                            <span className="text-emerald-700 font-semibold text-xs">
-                              Final: ${Number(vr.negotiated_price ?? vr.final_price ?? vr.quoted_price ?? 0).toLocaleString()}
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between text-[10px] text-slate-500 pt-0.5">
-                            <span>SLA: {vr.original_days ?? vr.final_days ?? 0}d &rarr; <strong className="text-slate-800">{vr.negotiated_days ?? vr.final_days ?? 0}d</strong></span>
-                            {(vr.days_saved ?? 0) > 0 && (
-                              <span className="text-blue-600">({vr.days_saved}d faster)</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Chat Messages Container */}
-                      <div className="p-3 space-y-2.5 flex-1 overflow-y-auto max-h-[340px] text-xs bg-[#f5f4f0]/50">
-                        {transcript.length === 0 ? (
-                          <div className="p-4 text-center text-slate-400 text-xs italic">
-                            No negotiation transcript events recorded.
-                          </div>
-                        ) : (
-                          transcript.map((turn, tIdx) => {
-                            const isBuyer = turn.speaker_role === 'buyer' || turn.speaker_role === 'GOV_AGENT' || turn.speaker_role === 'GOVERNMENT';
-                            const offerPrice = turn.offered_price ?? turn.price ?? 0;
-                            const offerDays = turn.offered_days ?? turn.delivery_days ?? 0;
-
-                            return (
-                              <div
-                                key={turn.id || tIdx}
-                                className={`flex flex-col space-y-1 ${isBuyer ? 'items-start' : 'items-end'}`}
-                              >
-                                <div className="text-[9px] text-slate-500 px-0.5 font-medium">
-                                  {isBuyer ? `Buyer Agent • Round ${turn.round ?? 0}` : `${vr.vendor_name?.split(' ')[0] || 'Vendor'} Sales • Round ${turn.round ?? 0}`}
-                                </div>
-
-                                <div
-                                  className={`p-2.5 rounded-lg max-w-[92%] space-y-1.5 leading-relaxed text-[11px] shadow-sm ${
-                                    isBuyer
-                                      ? 'bg-blue-50 border border-blue-200 text-slate-800'
-                                      : 'bg-[#fbfbfa] border border-[#e8e6df] text-slate-800'
-                                  }`}
-                                >
-                                  <p>{turn.message}</p>
-                                  <div className="flex items-center gap-2 pt-1 border-t border-[#e8e6df] text-[10px] font-mono text-slate-500">
-                                    <span>Offer: <strong className="text-slate-900">${Number(offerPrice).toLocaleString()}</strong></span>
-                                    <span>•</span>
-                                    <span>SLA: <strong className="text-slate-900">{offerDays}d</strong></span>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })
-                        )}
-                      </div>
-
-                      {/* Footer Action */}
-                      <div className="p-2.5 bg-[#f5f4f0] border-t border-[#e8e6df] flex items-center justify-between">
-                        <span className="text-[10px] text-slate-600">
-                          Score: <strong className="text-emerald-700 font-mono">{Number(vr.updated_score ?? 95.0).toFixed(1)}/100</strong>
-                        </span>
-                        <button
-                          type="button"
-                          disabled={generatingPo}
-                          onClick={() => handleAuthorizePo(vr.vendor_id)}
-                          className="btn-primary text-[10px] py-1 px-2.5"
-                        >
-                          <FileCheck className="w-3 h-3" /> Award Bid
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
       {/* AI Executive Auditor Panel */}
-      <div className="enterprise-card p-5 space-y-4">
+      <div className="enterprise-card p-5 space-y-4 border-l-4 border-l-blue-600 shadow-md bg-white">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#e8e6df] pb-3">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600">
@@ -699,7 +536,173 @@ export default function VendorComparison({
         ) : null}
       </div>
 
-      {/* Vendor Scoring Algorithm Formula Explainer Bar */}
+      {/* --- AUTONOMOUS MULTI-AGENT NEGOTIATION TRANSCRIPT PANEL --- */}
+      {(isNegotiating || (negotiationData && Array.isArray(negotiationData.results) && negotiationData.results.length > 0)) && (
+        <div className="enterprise-card p-5 space-y-4 animate-fade-in">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#e8e6df] pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600">
+                <Bot className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-bold text-slate-900">LangGraph Multi-Agent Negotiation Transcript</h2>
+                  <span className="text-[9px] font-medium px-1.5 py-0.2 rounded bg-[#f3f2ec] text-slate-600 border border-[#e8e6df]">
+                    3-Round StateGraph
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Simultaneous multi-round bargaining between BuyerAgent and top-ranked supplier personas.
+                </p>
+              </div>
+            </div>
+
+            {/* Total Savings Pill */}
+            {negotiationData && (
+              <div className="flex items-center gap-2.5 self-start sm:self-auto bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg">
+                <span className="text-[10px] text-emerald-800 uppercase font-semibold">Net Savings:</span>
+                <span className="text-xs font-bold text-emerald-700 font-mono">
+                  +${(negotiationData.total_savings || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </span>
+                <span className="text-[11px] text-emerald-600 font-mono">
+                  ({(negotiationData.total_savings_pct || 0).toFixed(1)}%)
+                </span>
+              </div>
+            )}
+          </div>
+
+          {isNegotiating ? (
+            <div className="py-10 text-center space-y-3">
+              <div className="w-8 h-8 border-2 border-blue-600/20 border-t-blue-600 rounded-full animate-spin mx-auto" />
+              <div className="space-y-0.5">
+                <h3 className="text-xs font-semibold text-slate-900">Negotiation in Progress</h3>
+                <p className="text-[11px] text-slate-500">
+                  Orchestrating price discovery, persona counter-offers, and SLA settlement...
+                </p>
+              </div>
+            </div>
+          ) : (negotiationData && Array.isArray(negotiationData.results)) && (
+            <div className="space-y-4">
+              {/* 3-Column Messenger Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                {negotiationData.results.map((vr) => {
+                  const hasSavings = (vr.savings_amount ?? vr.savings ?? 0) > 0;
+                  const isHeld = vr.status === 'held';
+                  const transcript = Array.isArray(vr.transcript) ? vr.transcript : (Array.isArray(vr.events) ? vr.events : []);
+
+                  return (
+                    <div
+                      key={vr.vendor_id}
+                      className="rounded-xl bg-[#fbfbfa] border border-[#e8e6df] flex flex-col justify-between overflow-hidden shadow-sm"
+                    >
+                      {/* Column Header: Vendor Persona & Delta */}
+                      <div className="p-3.5 bg-[#f5f4f0] border-b border-[#e8e6df] space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className={`text-[9px] font-medium px-1.5 py-0.2 rounded border ${getTierBadge(vr.pricing_tier)}`}>
+                            {vr.pricing_tier || 'Standard'}
+                          </span>
+                          {isHeld ? (
+                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#f3f2ec] text-slate-600 border border-[#e8e6df]">
+                              Standard Quote
+                            </span>
+                          ) : hasSavings ? (
+                            <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono">
+                              -₹{Number(vr.savings_amount ?? vr.savings ?? 0).toLocaleString()} ({Number(vr.savings_pct ?? vr.savings_percentage ?? 0).toFixed(1)}%)
+                            </span>
+                          ) : (
+                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#f3f2ec] text-slate-600 border border-[#e8e6df]">
+                              Held Firm
+                            </span>
+                          )}
+                        </div>
+
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-900 truncate">{vr.vendor_name}</h4>
+                          <div className="flex items-center justify-between text-xs pt-0.5 font-mono">
+                            <span className="text-slate-500 text-[11px]">
+                              Init: <span className="line-through">₹{Number(vr.original_price ?? vr.quoted_price ?? 0).toLocaleString()}</span>
+                            </span>
+                            <span className="text-emerald-700 font-semibold text-xs">
+                              Final: ₹{Number(vr.negotiated_price ?? vr.final_price ?? vr.quoted_price ?? 0).toLocaleString()}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-[10px] text-slate-500 pt-0.5">
+                            <span>SLA: {vr.original_days ?? vr.final_days ?? 0}d &rarr; <strong className="text-slate-800">{vr.negotiated_days ?? vr.final_days ?? 0}d</strong></span>
+                            {(vr.days_saved ?? 0) > 0 && (
+                              <span className="text-blue-600">({vr.days_saved}d faster)</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Chat Messages Container */}
+                      <div className="p-3 space-y-2.5 flex-1 overflow-y-auto max-h-[340px] text-xs bg-[#f5f4f0]/50">
+                        {transcript.length === 0 ? (
+                          <div className="p-4 text-center text-slate-400 text-xs italic">
+                            No negotiation transcript events recorded.
+                          </div>
+                        ) : (
+                          transcript.map((turn, tIdx) => {
+                            const isBuyer = turn.speaker_role === 'buyer' || turn.speaker_role === 'GOV_AGENT' || turn.speaker_role === 'GOVERNMENT';
+                            const offerPrice = turn.offered_price ?? turn.price ?? 0;
+                            const offerDays = turn.offered_days ?? turn.delivery_days ?? 0;
+
+                            return (
+                              <div
+                                key={turn.id || tIdx}
+                                className={`flex flex-col space-y-1 ${isBuyer ? 'items-start' : 'items-end'}`}
+                              >
+                                <div className="text-[9px] text-slate-500 px-0.5 font-medium">
+                                  {isBuyer ? `Buyer Agent • Round ${turn.round ?? 0}` : `${vr.vendor_name?.split(' ')[0] || 'Vendor'} Sales • Round ${turn.round ?? 0}`}
+                                </div>
+
+                                <div
+                                  className={`p-2.5 rounded-lg max-w-[92%] space-y-1.5 leading-relaxed text-[11px] shadow-sm ${
+                                    isBuyer
+                                      ? 'bg-blue-50 border border-blue-200 text-slate-800'
+                                      : 'bg-[#fbfbfa] border border-[#e8e6df] text-slate-800'
+                                  }`}
+                                >
+                                  <p>{turn.message}</p>
+                                  <div className="flex items-center gap-2 pt-1 border-t border-[#e8e6df] text-[10px] font-mono text-slate-500">
+                                    <span>Offer: <strong className="text-slate-900">₹{Number(offerPrice).toLocaleString()}</strong></span>
+                                    <span>•</span>
+                                    <span>SLA: <strong className="text-slate-900">{offerDays}d</strong></span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+
+                      {/* Footer Action */}
+                      <div className="p-2.5 bg-[#f5f4f0] border-t border-[#e8e6df] flex items-center justify-between">
+                        <span className="text-[10px] text-slate-600">
+                          Score: <strong className="text-emerald-700 font-mono">{Number(vr.updated_score ?? 95.0).toFixed(1)}/100</strong>
+                        </span>
+                        <button
+                          type="button"
+                          disabled={generatingPo}
+                          onClick={() => handleAuthorizePo(vr.vendor_id)}
+                          className="btn-primary text-[10px] py-1 px-2.5"
+                        >
+                          <FileCheck className="w-3 h-3" /> Award Bid
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {showDetailedScoring && (
+      <div className="animate-fade-in">
+        {/* Vendor Scoring Algorithm Formula Explainer Bar */}
       <div className="space-y-2">
         <div className="p-3 rounded-lg bg-[#f5f4f0] border border-[#e8e6df] flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
           <div className="flex items-center gap-1.5">
@@ -722,7 +725,9 @@ export default function VendorComparison({
           </div>
         </div>
       </div>
-
+      </div>
+      )}
+      
       {/* Vendor Bids Matrix Table */}
       <div className="enterprise-card p-5 space-y-3">
         <div className="flex items-center justify-between border-b border-[#e8e6df] pb-3">
@@ -732,9 +737,19 @@ export default function VendorComparison({
               <Award className="w-3.5 h-3.5 text-slate-400" /> Supplier Quotation Ranking Matrix
             </h3>
           </div>
-          <span className="px-2 py-0.5 rounded bg-[#f3f2ec] border border-[#e8e6df] text-[10px] font-mono text-slate-600 uppercase font-medium">
-            {recommendations.length} Bids Evaluated
-          </span>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setShowDetailedScoring(!showDetailedScoring)}
+              className="btn-secondary text-[11px] py-1 px-2.5 flex items-center gap-1.5"
+            >
+              <SlidersHorizontal className="w-3 h-3" />
+              {showDetailedScoring ? 'Hide Technical Details' : 'Show Detailed Scoring'}
+            </button>
+            <span className="px-2 py-0.5 rounded bg-[#f3f2ec] border border-[#e8e6df] text-[10px] font-mono text-slate-600 uppercase font-medium">
+              {recommendations.length} Bids Evaluated
+            </span>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -748,11 +763,11 @@ export default function VendorComparison({
                 <th className="py-2.5 px-3 text-center">Delivery SLA</th>
                 <th className="py-2.5 px-3 text-center">Reliability</th>
                 <th className="py-2.5 px-3 text-center">History (ERP)</th>
-                <th className="py-2.5 px-3 text-center font-mono">Price (30)</th>
-                <th className="py-2.5 px-3 text-center font-mono">Deliv (25)</th>
-                <th className="py-2.5 px-3 text-center font-mono">Rel (25)</th>
-                <th className="py-2.5 px-3 text-center font-mono">Hist (20)</th>
-                <th className="py-2.5 px-3 text-center font-mono">ESG (+3)</th>
+                {showDetailedScoring && <th className="py-2.5 px-3 text-center font-mono">Price (30)</th>}
+                {showDetailedScoring && <th className="py-2.5 px-3 text-center font-mono">Deliv (25)</th>}
+                {showDetailedScoring && <th className="py-2.5 px-3 text-center font-mono">Rel (25)</th>}
+                {showDetailedScoring && <th className="py-2.5 px-3 text-center font-mono">Hist (20)</th>}
+                {showDetailedScoring && <th className="py-2.5 px-3 text-center font-mono">ESG (+3)</th>}
                 <th className="py-2.5 px-3 font-mono text-right">Score / 100</th>
                 <th className="py-2.5 px-3 text-center">Action</th>
               </tr>
@@ -813,16 +828,16 @@ export default function VendorComparison({
                       {rec.original_quoted_price && rec.original_quoted_price > rec.quoted_price ? (
                         <div className="space-y-0.5">
                           <div className="text-[10px] text-slate-400 line-through">
-                            ${Number(rec.original_quoted_price || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                            ₹{Number(rec.original_quoted_price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                           </div>
                           <div className="text-emerald-700 font-bold flex items-center justify-end gap-1">
                             <Zap className="w-3 h-3" />
-                            ${Number(rec.quoted_price || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                            ₹{Number(rec.quoted_price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                           </div>
                         </div>
                       ) : (
                         <span className="text-slate-900">
-                          ${Number(rec.quoted_price || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                          ₹{Number(rec.quoted_price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                         </span>
                       )}
                     </td>
@@ -860,34 +875,38 @@ export default function VendorComparison({
                       )}
                     </td>
 
-                    {/* Price Score (30) */}
-                    <td className="py-3 px-3 text-center font-mono text-slate-700 text-[11px]">
-                      {Number(rec.scores?.price_score || 0).toFixed(1)}
-                    </td>
-
-                    {/* Delivery Score (25) */}
-                    <td className="py-3 px-3 text-center font-mono text-slate-700 text-[11px]">
-                      {Number(rec.scores?.delivery_score || 0).toFixed(1)}
-                    </td>
-
-                    {/* Reliability Score (25) */}
-                    <td className="py-3 px-3 text-center font-mono text-slate-700 text-[11px]">
-                      {Number(rec.scores?.reliability_score || 0).toFixed(1)}
-                    </td>
-
-                    {/* History Score (20) */}
-                    <td className="py-3 px-3 text-center font-mono text-slate-700 text-[11px]">
-                      {Number(rec.scores?.history_score || 0).toFixed(1)}
-                    </td>
-
-                    {/* ESG Nearshoring Bonus (+3) */}
-                    <td className="py-3 px-3 text-center font-mono text-[11px]">
-                      {rec.scores.nearshoring_bonus > 0 ? (
-                        <span className="text-emerald-700 font-semibold">+{Number(rec.scores?.nearshoring_bonus || 0).toFixed(1)}</span>
-                      ) : (
-                        <span className="text-slate-400">-</span>
-                      )}
-                    </td>
+                    {showDetailedScoring && (
+                      <>
+                        {/* Price Score (30) */}
+                                            <td className="py-3 px-3 text-center font-mono text-slate-700 text-[11px]">
+                                              {Number(rec.scores?.price_score || 0).toFixed(1)}
+                                            </td>
+                        
+                                            {/* Delivery Score (25) */}
+                                            <td className="py-3 px-3 text-center font-mono text-slate-700 text-[11px]">
+                                              {Number(rec.scores?.delivery_score || 0).toFixed(1)}
+                                            </td>
+                        
+                                            {/* Reliability Score (25) */}
+                                            <td className="py-3 px-3 text-center font-mono text-slate-700 text-[11px]">
+                                              {Number(rec.scores?.reliability_score || 0).toFixed(1)}
+                                            </td>
+                        
+                                            {/* History Score (20) */}
+                                            <td className="py-3 px-3 text-center font-mono text-slate-700 text-[11px]">
+                                              {Number(rec.scores?.history_score || 0).toFixed(1)}
+                                            </td>
+                        
+                                            {/* ESG Nearshoring Bonus (+3) */}
+                                            <td className="py-3 px-3 text-center font-mono text-[11px]">
+                                              {rec.scores.nearshoring_bonus > 0 ? (
+                                                <span className="text-emerald-700 font-semibold">+{Number(rec.scores?.nearshoring_bonus || 0).toFixed(1)}</span>
+                                              ) : (
+                                                <span className="text-slate-400">-</span>
+                                              )}
+                                            </td>
+                      </>
+                    )}
 
                     {/* Total Composite Score with Signature Mini Progress Bar */}
                     <td className="py-3 px-3 text-right">

@@ -138,7 +138,7 @@ export default function VendorAwardedOrders({
                 <div>
                   <span className="text-[10px] text-slate-400 block">Agreed Value</span>
                   <strong className="text-slate-900 font-bold text-sm">
-                    ${Number(bid.quoted_price).toLocaleString()}
+                    ₹{Number(bid.quoted_price).toLocaleString()}
                   </strong>
                 </div>
                 <div>

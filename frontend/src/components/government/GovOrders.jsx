@@ -213,7 +213,7 @@ export default function GovOrders({
                       </td>
                       <td className="py-3 px-4 text-right font-mono tabular-nums whitespace-nowrap">
                         <div className="font-bold text-slate-900">
-                          ${Number(order.estimated_budget || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                          ₹{Number(order.estimated_budget || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                         </div>
                         <div className="text-[10px] text-slate-500">
                           Qty: {order.quantity} units

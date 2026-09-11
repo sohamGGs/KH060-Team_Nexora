@@ -32,6 +32,8 @@ export default function NegotiationPanel({
   const [actionLoading, setActionLoading] = useState(false);
   const [comment, setComment] = useState('');
   const [showCounterModal, setShowCounterModal] = useState(false);
+  const [showPolicyHistory, setShowPolicyHistory] = useState(false);
+  const [showAuditTable, setShowAuditTable] = useState(false);
   const [counterPrice, setCounterPrice] = useState('');
   const [counterDays, setCounterDays] = useState('');
   const [counterMessage, setCounterMessage] = useState('');
@@ -182,7 +184,7 @@ export default function NegotiationPanel({
           Number(counterDays),
           counterMessage
         );
-        setSuccessMsg(`Government counteroffer of $${Number(counterPrice).toLocaleString()} submitted! Vendor Agent is responding.`);
+        setSuccessMsg(`Government counteroffer of ₹₹{Number(counterPrice).toLocaleString()} submitted! Vendor Agent is responding.`);
       } else {
         resp = await vendorPortalAPI.counterOffer(
           sessionId,
@@ -190,7 +192,7 @@ export default function NegotiationPanel({
           Number(counterDays),
           counterMessage
         );
-        setSuccessMsg(`Vendor counteroffer of $${Number(counterPrice).toLocaleString()} submitted! Government Agent is responding.`);
+        setSuccessMsg(`Vendor counteroffer of ₹₹{Number(counterPrice).toLocaleString()} submitted! Government Agent is responding.`);
       }
 
       setShowCounterModal(false);
@@ -283,7 +285,7 @@ export default function NegotiationPanel({
               </span>
               <span className="text-base font-bold font-mono text-slate-900">
                 {currentPrice !== null && currentPrice !== undefined
-                  ? `$${Number(currentPrice).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+                  ? `₹₹{Number(currentPrice).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
                   : '---'}
               </span>
             </div>
@@ -311,9 +313,9 @@ export default function NegotiationPanel({
               <span className="font-semibold text-blue-900 uppercase font-mono tracking-wider text-[10px]">
                 Government Private Parameters (Protected):
               </span>
-              <span>Target: <strong className="font-mono text-slate-800">${Number(govState.target_price || 0).toLocaleString()}</strong></span>
+              <span>Target: <strong className="font-mono text-slate-800">₹{Number(govState.target_price || 0).toLocaleString()}</strong></span>
               <span className="text-slate-300">|</span>
-              <span>Budget Ceiling: <strong className="font-mono text-slate-800">${Number(govState.max_authorized_price || 0).toLocaleString()}</strong></span>
+              <span>Budget Ceiling: <strong className="font-mono text-slate-800">₹{Number(govState.max_authorized_price || 0).toLocaleString()}</strong></span>
             </div>
             <span className="text-[10px] italic text-slate-400 hidden sm:inline">
               Never disclosed to vendor
@@ -328,9 +330,9 @@ export default function NegotiationPanel({
               <span className="font-semibold text-slate-800 uppercase font-mono tracking-wider text-[10px]">
                 Vendor Commercial Parameters (Protected):
               </span>
-              <span>Target: <strong className="font-mono text-slate-800">${Number(vendorState.target_price || 0).toLocaleString()}</strong></span>
+              <span>Target: <strong className="font-mono text-slate-800">₹{Number(vendorState.target_price || 0).toLocaleString()}</strong></span>
               <span className="text-slate-300">|</span>
-              <span>Minimum Floor: <strong className="font-mono text-slate-800">${Number(vendorState.absolute_minimum_price || 0).toLocaleString()}</strong></span>
+              <span>Minimum Floor: <strong className="font-mono text-slate-800">₹{Number(vendorState.absolute_minimum_price || 0).toLocaleString()}</strong></span>
             </div>
             <span className="text-[10px] italic text-slate-400 hidden sm:inline">
               Never disclosed to government
@@ -351,206 +353,6 @@ export default function NegotiationPanel({
         <div className="p-3.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
           <span>{successMsg}</span>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* PROMINENT ESCALATION CARD (Between panels when pending approval)           */}
-      {/* ========================================================================= */}
-      {isGovUser && isPendingGovState && (
-        <div className="enterprise-card p-5 bg-amber-50/70 border-2 border-amber-300 shadow-xs space-y-4 animate-fade-in">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 border border-amber-300 flex items-center justify-center shrink-0 mt-0.5">
-                <AlertTriangle className="w-4 h-4" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] uppercase font-mono font-bold tracking-wider px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
-                    Human Supervisory Intervention Required
-                  </span>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white text-slate-700 font-bold border border-amber-300">
-                    Rule: {relevantEscalation?.role === 'GOVERNMENT' ? 'GOV_MAX_PRICE_CEILING' : 'GOV_AUTHORITY_THRESHOLD'}
-                  </span>
-                </div>
-                <h3 className="text-sm font-bold text-amber-950 mt-1">
-                  Algorithmic Authority Limit Reached
-                </h3>
-                <p className="text-xs text-amber-900 mt-1 leading-relaxed max-w-2xl">
-                  {relevantEscalation?.reason || 'Vendor proposal exceeds the autonomous pricing ceiling. Supervisory review is required to approve an exception, counteroffer, or decline.'}
-                </p>
-              </div>
-            </div>
-
-            <div className="text-right shrink-0 bg-white border border-amber-300 px-3 py-2 rounded-lg shadow-2xs">
-              <span className="text-[10px] uppercase font-mono text-slate-500 block">Proposal Under Review</span>
-              <strong className="font-mono text-sm text-slate-900 block">
-                ${Number(currentPrice || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-              </strong>
-              <span className="text-[10px] font-mono text-slate-600">{currentDays || '--'} delivery days</span>
-            </div>
-          </div>
-
-          <div className="pt-3 border-t border-amber-200 flex items-center justify-between flex-wrap gap-3">
-            <div className="text-xs font-semibold text-amber-950">
-              Select an executive action to resolve this escalation:
-            </div>
-
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <button
-                type="button"
-                disabled={actionLoading}
-                onClick={() => handleGovAction('APPROVE')}
-                className="btn-primary bg-emerald-600 hover:bg-emerald-700 text-xs py-1.5 px-3.5 shadow-xs flex items-center gap-1.5 cursor-pointer font-bold"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Approve &amp; Resume</span>
-              </button>
-
-              <button
-                type="button"
-                disabled={actionLoading}
-                onClick={() => {
-                  setCounterPrice(currentPrice ? String(currentPrice) : '');
-                  setCounterDays(currentDays ? String(currentDays) : '');
-                  setShowCounterModal(true);
-                }}
-                className="btn-secondary bg-white hover:bg-slate-50 text-slate-800 border-[#e8e6df] text-xs py-1.5 px-3.5 flex items-center gap-1.5 cursor-pointer font-semibold shadow-2xs"
-              >
-                <Send className="w-4 h-4 text-slate-600" />
-                <span>Manual Counteroffer</span>
-              </button>
-
-              <button
-                type="button"
-                disabled={actionLoading}
-                onClick={() => handleGovAction('REJECT')}
-                className="btn-danger text-xs py-1.5 px-3.5 flex items-center gap-1.5 cursor-pointer font-semibold"
-              >
-                <XCircle className="w-4 h-4" />
-                <span>Reject</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Informational for Government when Vendor Escalation is Pending */}
-      {isGovUser && isPendingVendorState && (
-        <div className="p-4 rounded-xl bg-slate-50 border border-slate-300 text-slate-800 flex items-start gap-3 shadow-2xs">
-          <div className="w-8 h-8 rounded-lg bg-slate-200 text-slate-700 flex items-center justify-center shrink-0 mt-0.5">
-            <Clock className="w-4 h-4" />
-          </div>
-          <div>
-            <span className="text-[10px] uppercase font-mono font-bold tracking-wider text-slate-600 block">
-              Awaiting Counterparty Concession
-            </span>
-            <h4 className="text-sm font-bold text-slate-900">
-              Vendor Commercial Leadership Review in Progress
-            </h4>
-            <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-              The vendor sales agent has paused negotiations and escalated government terms to vendor corporate management for margin concession approval. The negotiation is paused awaiting their review.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Prominent Vendor Escalation Card */}
-      {isVendorUser && isPendingVendorState && (
-        <div className="enterprise-card p-5 bg-amber-50/70 border-2 border-amber-300 shadow-xs space-y-4 animate-fade-in">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 border border-amber-300 flex items-center justify-center shrink-0 mt-0.5">
-                <User className="w-4 h-4" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] uppercase font-mono font-bold tracking-wider px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
-                    Vendor Commercial Authority Review
-                  </span>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white text-slate-700 font-bold border border-amber-300">
-                    Rule: {relevantEscalation?.role === 'VENDOR' ? 'VENDOR_MIN_PRICE_FLOOR' : 'COMMERCIAL_BOUNDARY'}
-                  </span>
-                </div>
-                <h3 className="text-sm font-bold text-amber-950 mt-1">
-                  Commercial Margin Boundary Reached
-                </h3>
-                <p className="text-xs text-amber-900 mt-1 leading-relaxed max-w-2xl">
-                  {relevantEscalation?.reason || 'Government proposal is below your configured minimum floor. Executive commercial approval is required to concede, counteroffer, or decline.'}
-                </p>
-              </div>
-            </div>
-
-            <div className="text-right shrink-0 bg-white border border-amber-300 px-3 py-2 rounded-lg shadow-2xs">
-              <span className="text-[10px] uppercase font-mono text-slate-500 block">Government Offer</span>
-              <strong className="font-mono text-sm text-slate-900 block">
-                ${Number(currentPrice || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-              </strong>
-              <span className="text-[10px] font-mono text-slate-600">{currentDays || '--'} delivery days</span>
-            </div>
-          </div>
-
-          <div className="pt-3 border-t border-amber-200 flex items-center justify-between flex-wrap gap-3">
-            <div className="text-xs font-semibold text-amber-950">
-              Select an executive commercial action:
-            </div>
-
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <button
-                type="button"
-                disabled={actionLoading}
-                onClick={() => handleVendorAction('APPROVE')}
-                className="btn-primary bg-emerald-600 hover:bg-emerald-700 text-xs py-1.5 px-3.5 shadow-xs flex items-center gap-1.5 cursor-pointer font-bold"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Approve Concession</span>
-              </button>
-
-              <button
-                type="button"
-                disabled={actionLoading}
-                onClick={() => {
-                  setCounterPrice(currentPrice ? String(currentPrice) : '');
-                  setCounterDays(currentDays ? String(currentDays) : '');
-                  setShowCounterModal(true);
-                }}
-                className="btn-secondary bg-white hover:bg-slate-50 text-slate-800 border-[#e8e6df] text-xs py-1.5 px-3.5 flex items-center gap-1.5 cursor-pointer font-semibold shadow-2xs"
-              >
-                <Send className="w-4 h-4 text-slate-600" />
-                <span>Counteroffer</span>
-              </button>
-
-              <button
-                type="button"
-                disabled={actionLoading}
-                onClick={() => handleVendorAction('REJECT')}
-                className="btn-danger text-xs py-1.5 px-3.5 flex items-center gap-1.5 cursor-pointer font-semibold"
-              >
-                <XCircle className="w-4 h-4" />
-                <span>Reject</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Informational for Vendor when Government Escalation is Pending */}
-      {isVendorUser && isPendingGovState && (
-        <div className="p-4 rounded-xl bg-slate-50 border border-slate-300 text-slate-800 flex items-start gap-3 shadow-2xs">
-          <div className="w-8 h-8 rounded-lg bg-slate-200 text-slate-700 flex items-center justify-center shrink-0 mt-0.5">
-            <Clock className="w-4 h-4" />
-          </div>
-          <div>
-            <span className="text-[10px] uppercase font-mono font-bold tracking-wider text-slate-600 block">
-              Awaiting Government Approval
-            </span>
-            <h4 className="text-sm font-bold text-slate-900">
-              Government Procurement Authority Review in Progress
-            </h4>
-            <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-              Vendor terms have been escalated to the government procurement supervisor for budget ceiling exception approval. Negotiation is currently paused.
-            </p>
-          </div>
         </div>
       )}
 
@@ -661,7 +463,7 @@ export default function NegotiationPanel({
                         {ev.price !== null && ev.price !== undefined && (
                           <span className="inline-flex items-center gap-1 font-mono text-xs font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-900 border border-blue-200">
                             <DollarSign className="w-3.5 h-3.5 text-blue-600" />
-                            ${Number(ev.price).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                            ₹{Number(ev.price).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                           </span>
                         )}
                         {ev.delivery_days !== null && ev.delivery_days !== undefined && (
@@ -775,7 +577,7 @@ export default function NegotiationPanel({
                         {ev.price !== null && ev.price !== undefined && (
                           <span className="inline-flex items-center gap-1 font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-900 border border-slate-300">
                             <DollarSign className="w-3.5 h-3.5 text-slate-600" />
-                            ${Number(ev.price).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                            ₹{Number(ev.price).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                           </span>
                         )}
                         {ev.delivery_days !== null && ev.delivery_days !== undefined && (
@@ -800,6 +602,206 @@ export default function NegotiationPanel({
           </div>
         </div>
       </div>
+
+      {/* ========================================================================= */}
+      {/* PROMINENT ESCALATION CARD (Between panels when pending approval)           */}
+      {/* ========================================================================= */}
+      {isGovUser && isPendingGovState && (
+        <div className="enterprise-card p-5 bg-amber-50/70 border-2 border-amber-300 shadow-xs space-y-4 animate-fade-in">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 border border-amber-300 flex items-center justify-center shrink-0 mt-0.5">
+                <AlertTriangle className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] uppercase font-mono font-bold tracking-wider px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
+                    Human Supervisory Intervention Required
+                  </span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white text-slate-700 font-bold border border-amber-300">
+                    Rule: {relevantEscalation?.role === 'GOVERNMENT' ? 'GOV_MAX_PRICE_CEILING' : 'GOV_AUTHORITY_THRESHOLD'}
+                  </span>
+                </div>
+                <h3 className="text-sm font-bold text-amber-950 mt-1">
+                  Algorithmic Authority Limit Reached
+                </h3>
+                <p className="text-xs text-amber-900 mt-1 leading-relaxed max-w-2xl">
+                  {relevantEscalation?.reason || 'Vendor proposal exceeds the autonomous pricing ceiling. Supervisory review is required to approve an exception, counteroffer, or decline.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="text-right shrink-0 bg-white border border-amber-300 px-3 py-2 rounded-lg shadow-2xs">
+              <span className="text-[10px] uppercase font-mono text-slate-500 block">Proposal Under Review</span>
+              <strong className="font-mono text-sm text-slate-900 block">
+                ₹{Number(currentPrice || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              </strong>
+              <span className="text-[10px] font-mono text-slate-600">{currentDays || '--'} delivery days</span>
+            </div>
+          </div>
+
+          <div className="pt-3 border-t border-amber-200 flex items-center justify-between flex-wrap gap-3">
+            <div className="text-xs font-semibold text-amber-950">
+              Select an executive action to resolve this escalation:
+            </div>
+
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <button
+                type="button"
+                disabled={actionLoading}
+                onClick={() => handleGovAction('APPROVE')}
+                className="btn-primary bg-emerald-600 hover:bg-emerald-700 text-xs py-1.5 px-3.5 shadow-xs flex items-center gap-1.5 cursor-pointer font-bold"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Approve &amp; Resume</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={actionLoading}
+                onClick={() => {
+                  setCounterPrice(currentPrice ? String(currentPrice) : '');
+                  setCounterDays(currentDays ? String(currentDays) : '');
+                  setShowCounterModal(true);
+                }}
+                className="btn-secondary bg-white hover:bg-slate-50 text-slate-800 border-[#e8e6df] text-xs py-1.5 px-3.5 flex items-center gap-1.5 cursor-pointer font-semibold shadow-2xs"
+              >
+                <Send className="w-4 h-4 text-slate-600" />
+                <span>Manual Counteroffer</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={actionLoading}
+                onClick={() => handleGovAction('REJECT')}
+                className="btn-danger text-xs py-1.5 px-3.5 flex items-center gap-1.5 cursor-pointer font-semibold"
+              >
+                <XCircle className="w-4 h-4" />
+                <span>Reject</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Informational for Government when Vendor Escalation is Pending */}
+      {isGovUser && isPendingVendorState && (
+        <div className="p-4 rounded-xl bg-slate-50 border border-slate-300 text-slate-800 flex items-start gap-3 shadow-2xs">
+          <div className="w-8 h-8 rounded-lg bg-slate-200 text-slate-700 flex items-center justify-center shrink-0 mt-0.5">
+            <Clock className="w-4 h-4" />
+          </div>
+          <div>
+            <span className="text-[10px] uppercase font-mono font-bold tracking-wider text-slate-600 block">
+              Awaiting Counterparty Concession
+            </span>
+            <h4 className="text-sm font-bold text-slate-900">
+              Vendor Commercial Leadership Review in Progress
+            </h4>
+            <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+              The vendor sales agent has paused negotiations and escalated government terms to vendor corporate management for margin concession approval. The negotiation is paused awaiting their review.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Prominent Vendor Escalation Card */}
+      {isVendorUser && isPendingVendorState && (
+        <div className="enterprise-card p-5 bg-amber-50/70 border-2 border-amber-300 shadow-xs space-y-4 animate-fade-in">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 border border-amber-300 flex items-center justify-center shrink-0 mt-0.5">
+                <User className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] uppercase font-mono font-bold tracking-wider px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
+                    Vendor Commercial Authority Review
+                  </span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white text-slate-700 font-bold border border-amber-300">
+                    Rule: {relevantEscalation?.role === 'VENDOR' ? 'VENDOR_MIN_PRICE_FLOOR' : 'COMMERCIAL_BOUNDARY'}
+                  </span>
+                </div>
+                <h3 className="text-sm font-bold text-amber-950 mt-1">
+                  Commercial Margin Boundary Reached
+                </h3>
+                <p className="text-xs text-amber-900 mt-1 leading-relaxed max-w-2xl">
+                  {relevantEscalation?.reason || 'Government proposal is below your configured minimum floor. Executive commercial approval is required to concede, counteroffer, or decline.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="text-right shrink-0 bg-white border border-amber-300 px-3 py-2 rounded-lg shadow-2xs">
+              <span className="text-[10px] uppercase font-mono text-slate-500 block">Government Offer</span>
+              <strong className="font-mono text-sm text-slate-900 block">
+                ₹{Number(currentPrice || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              </strong>
+              <span className="text-[10px] font-mono text-slate-600">{currentDays || '--'} delivery days</span>
+            </div>
+          </div>
+
+          <div className="pt-3 border-t border-amber-200 flex items-center justify-between flex-wrap gap-3">
+            <div className="text-xs font-semibold text-amber-950">
+              Select an executive commercial action:
+            </div>
+
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <button
+                type="button"
+                disabled={actionLoading}
+                onClick={() => handleVendorAction('APPROVE')}
+                className="btn-primary bg-emerald-600 hover:bg-emerald-700 text-xs py-1.5 px-3.5 shadow-xs flex items-center gap-1.5 cursor-pointer font-bold"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Approve Concession</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={actionLoading}
+                onClick={() => {
+                  setCounterPrice(currentPrice ? String(currentPrice) : '');
+                  setCounterDays(currentDays ? String(currentDays) : '');
+                  setShowCounterModal(true);
+                }}
+                className="btn-secondary bg-white hover:bg-slate-50 text-slate-800 border-[#e8e6df] text-xs py-1.5 px-3.5 flex items-center gap-1.5 cursor-pointer font-semibold shadow-2xs"
+              >
+                <Send className="w-4 h-4 text-slate-600" />
+                <span>Counteroffer</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={actionLoading}
+                onClick={() => handleVendorAction('REJECT')}
+                className="btn-danger text-xs py-1.5 px-3.5 flex items-center gap-1.5 cursor-pointer font-semibold"
+              >
+                <XCircle className="w-4 h-4" />
+                <span>Reject</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Informational for Vendor when Government Escalation is Pending */}
+      {isVendorUser && isPendingGovState && (
+        <div className="p-4 rounded-xl bg-slate-50 border border-slate-300 text-slate-800 flex items-start gap-3 shadow-2xs">
+          <div className="w-8 h-8 rounded-lg bg-slate-200 text-slate-700 flex items-center justify-center shrink-0 mt-0.5">
+            <Clock className="w-4 h-4" />
+          </div>
+          <div>
+            <span className="text-[10px] uppercase font-mono font-bold tracking-wider text-slate-600 block">
+              Awaiting Government Approval
+            </span>
+            <h4 className="text-sm font-bold text-slate-900">
+              Government Procurement Authority Review in Progress
+            </h4>
+            <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+              Vendor terms have been escalated to the government procurement supervisor for budget ceiling exception approval. Negotiation is currently paused.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* 3. POLICY ENGINE EVALUATION & DETERMINISTIC RULES                          */}
@@ -861,6 +863,20 @@ export default function NegotiationPanel({
 
         {/* Historical Policy Decisions Table if present */}
         {policyDecisionsList.length > 0 && (
+          <div className="mt-2 pt-2 border-t border-[#f0eee6]">
+            <div className="flex items-center justify-between py-1">
+              <span className="text-[10px] font-mono text-slate-500 uppercase font-semibold">
+                Evaluation History ({policyDecisionsList.length} Rounds Evaluated)
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowPolicyHistory(!showPolicyHistory)}
+                className="text-[11px] font-medium text-blue-600 hover:text-blue-800 underline font-mono cursor-pointer"
+              >
+                {showPolicyHistory ? 'Collapse History' : 'Expand History (' + policyDecisionsList.length + ')'}
+              </button>
+            </div>
+            {showPolicyHistory && (
           <div className="mt-2 pt-2 border-t border-[#f0eee6] overflow-x-auto">
             <table className="w-full text-left text-[11px] font-mono">
               <thead>
@@ -877,7 +893,7 @@ export default function NegotiationPanel({
                   <tr key={pd.id || i} className="text-slate-700">
                     <td className="py-1 font-bold">Round {pd.round}</td>
                     <td className="py-1">{pd.role}</td>
-                    <td className="py-1">${Number(pd.evaluated_price || 0).toLocaleString()} ({pd.evaluated_delivery_days}d)</td>
+                    <td className="py-1">₹{Number(pd.evaluated_price || 0).toLocaleString()} ({pd.evaluated_delivery_days}d)</td>
                     <td className="py-1 text-slate-500 truncate max-w-[200px]">{pd.rule_triggered}</td>
                     <td className="py-1 text-right font-bold">
                       <span className={`px-1.5 py-0.2 rounded text-[10px] ${
@@ -893,6 +909,8 @@ export default function NegotiationPanel({
                 ))}
               </tbody>
             </table>
+          </div>
+            )}
           </div>
         )}
       </div>
@@ -921,7 +939,22 @@ export default function NegotiationPanel({
           </span>
         </div>
 
-        {events.length === 0 ? (
+        <div className="flex items-center justify-between py-1 border-t border-[#f0eee6] mt-2">
+          <span className="text-[10px] font-mono text-slate-500 uppercase font-semibold">
+            Chronological Event Log ({events.length} Events Recorded)
+          </span>
+          <button
+            type="button"
+            onClick={() => setShowAuditTable(!showAuditTable)}
+            className="text-[11px] font-medium text-blue-600 hover:text-blue-800 underline font-mono cursor-pointer"
+          >
+            {showAuditTable ? 'Hide Detailed Event Table' : 'View Full Event Table (' + events.length + ')'}
+          </button>
+        </div>
+
+        {showAuditTable && (
+          <div className="mt-2">
+            {events.length === 0 ? (
           <div className="py-6 text-center text-xs text-slate-400">
             No events recorded in the audit ledger yet.
           </div>
@@ -981,7 +1014,7 @@ export default function NegotiationPanel({
                       <td className="py-2 px-2 whitespace-nowrap font-mono text-[11px]">
                         {ev.price !== null && ev.price !== undefined ? (
                           <strong className="text-slate-900 font-bold">
-                            ${Number(ev.price).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                            ₹{Number(ev.price).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                           </strong>
                         ) : (
                           <span className="text-slate-400">---</span>
@@ -1007,6 +1040,8 @@ export default function NegotiationPanel({
             </table>
           </div>
         )}
+          </div>
+        )}
 
         {/* Final Consensus Summary Bar */}
         {currentStatus === 'ACCEPTED' && (
@@ -1014,7 +1049,7 @@ export default function NegotiationPanel({
             <div className="flex items-center gap-2 text-xs text-emerald-900 font-semibold">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>
-                Agreement Settlement: Final terms confirmed at <strong>${Number(currentPrice || 0).toLocaleString()}</strong> with <strong>{currentDays || '--'} delivery days SLA</strong>.
+                Agreement Settlement: Final terms confirmed at <strong>₹{Number(currentPrice || 0).toLocaleString()}</strong> with <strong>{currentDays || '--'} delivery days SLA</strong>.
               </span>
             </div>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-100 text-emerald-950 font-bold border border-emerald-200">
@@ -1061,7 +1096,7 @@ export default function NegotiationPanel({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 uppercase font-mono mb-1">
-                    Proposed Price ($)
+                    Proposed Price (₹)
                   </label>
                   <div className="relative">
                     <DollarSign className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />

@@ -78,7 +78,7 @@ export default function VendorNegotiations({
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#e8e6df] pb-5">
         <div>
-          <span className="text-[10px] uppercase font-mono tracking-widest text-purple-600 font-bold block mb-1">
+          <span className="text-[10px] uppercase font-mono tracking-widest text-slate-500 font-bold block mb-1">
             Supplier Bilateral Contracting
           </span>
           <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
@@ -112,7 +112,7 @@ export default function VendorNegotiations({
         <div className="lg:col-span-4 enterprise-card p-4 space-y-3 bg-[#fbfbfa]">
           <div className="flex items-center justify-between pb-2 border-b border-[#e8e6df]">
             <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5 font-mono uppercase">
-              <MessageSquare className="w-3.5 h-3.5 text-purple-600" />
+              <MessageSquare className="w-3.5 h-3.5 text-slate-500" />
               Vendor Sessions ({sessions.length})
             </span>
           </div>
@@ -124,13 +124,13 @@ export default function VendorNegotiations({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search negotiations..."
-              className="w-full pl-8 pr-2.5 py-1.5 bg-white border border-[#dcd9ce] rounded-lg text-xs text-slate-800 focus:outline-none focus:border-purple-500"
+              className="w-full pl-8 pr-2.5 py-1.5 bg-white border border-[#dcd9ce] rounded-lg text-xs text-slate-800 focus:outline-none focus:border-blue-500"
             />
           </div>
 
           {loading ? (
             <div className="py-10 text-center space-y-2">
-              <div className="w-6 h-6 border-2 border-purple-600/30 border-t-purple-600 rounded-full animate-spin mx-auto" />
+              <div className="w-6 h-6 border-2 border-blue-600/30 border-t-blue-600 rounded-full animate-spin mx-auto" />
               <p className="text-[11px] text-slate-500 font-mono">Loading sessions...</p>
             </div>
           ) : filteredSessions.length === 0 ? (
@@ -152,7 +152,7 @@ export default function VendorNegotiations({
                     onClick={() => setSelectedSessionId(sId)}
                     className={`w-full text-left p-3 rounded-lg border transition-all cursor-pointer ${
                       isSelected
-                        ? 'bg-purple-50/70 border-purple-300 shadow-sm'
+                        ? 'bg-blue-50/80 border-blue-400 shadow-sm'
                         : 'bg-white hover:bg-[#f5f4f0] border-[#e8e6df]'
                     }`}
                   >
@@ -204,7 +204,7 @@ export default function VendorNegotiations({
         <div className="lg:col-span-8">
           {detailLoading ? (
             <div className="enterprise-card p-16 text-center space-y-3 bg-[#fbfbfa]">
-              <div className="w-8 h-8 border-2 border-purple-600/30 border-t-purple-600 rounded-full animate-spin mx-auto" />
+              <div className="w-8 h-8 border-2 border-blue-600/30 border-t-blue-600 rounded-full animate-spin mx-auto" />
               <p className="text-xs text-slate-500 font-mono">Loading public negotiation transcript...</p>
             </div>
           ) : sessionDetail ? (
