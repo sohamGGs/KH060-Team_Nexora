@@ -1,22 +1,40 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Login from './components/Login';
-import Sidebar from './components/Sidebar';
+
+// Government Portal Components
+import GovSidebar from './components/government/GovSidebar';
 import Dashboard from './components/Dashboard';
+import GovOrders from './components/government/GovOrders';
+import GovActiveBids from './components/government/GovActiveBids';
+import GovNegotiations from './components/government/GovNegotiations';
 import PurchaseRequestForm from './components/PurchaseRequestForm';
 import VendorComparison from './components/VendorComparison';
 import ApprovalQueue from './components/ApprovalQueue';
 import PurchaseOrders from './components/PurchaseOrders';
-import { authAPI, approvalsAPI } from './api';
-import { CheckCircle2, AlertCircle, Sparkles } from 'lucide-react';
+
+// Vendor Portal Components
+import VendorSidebar from './components/vendor/VendorSidebar';
+import VendorDashboard from './components/vendor/VendorDashboard';
+import VendorActiveOrders from './components/vendor/VendorActiveOrders';
+import VendorMyBids from './components/vendor/VendorMyBids';
+import VendorNegotiations from './components/vendor/VendorNegotiations';
+import VendorAwardedOrders from './components/vendor/VendorAwardedOrders';
+
+import { authAPI, approvalsAPI, vendorPortalAPI } from './api';
+import { CheckCircle2, AlertCircle } from 'lucide-react';
 
 export default function App() {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedPrId, setSelectedPrId] = useState(null);
+  const [orderToBid, setOrderToBid] = useState(null);
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0);
+  const [vendorBidsCount, setVendorBidsCount] = useState(0);
   const [toast, setToast] = useState(null);
   const [authChecking, setAuthChecking] = useState(true);
+
+  const isVendor = user?.role === 'Vendor';
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -25,15 +43,20 @@ export default function App() {
     }, 4000);
   };
 
-  const fetchPendingCount = useCallback(async () => {
-    if (!token) return;
+  const fetchBadgeCounts = useCallback(async () => {
+    if (!token || !user) return;
     try {
-      const queue = await approvalsAPI.getQueue('Pending');
-      setPendingApprovalsCount(queue.length);
+      if (user.role === 'Vendor') {
+        const bids = await vendorPortalAPI.getMyBids();
+        setVendorBidsCount(Array.isArray(bids) ? bids.length : 0);
+      } else {
+        const queue = await approvalsAPI.getQueue('Pending');
+        setPendingApprovalsCount(Array.isArray(queue) ? queue.length : 0);
+      }
     } catch (err) {
-      // ignore
+      // Ignore background badge fetch errors
     }
-  }, [token]);
+  }, [token, user]);
 
   // Initial Auth Check
   useEffect(() => {
@@ -42,8 +65,10 @@ export default function App() {
 
     if (savedToken && savedUser) {
       try {
+        const parsedUser = JSON.parse(savedUser);
         setToken(savedToken);
-        setUser(JSON.parse(savedUser));
+        setUser(parsedUser);
+        setActiveTab(parsedUser.role === 'Vendor' ? 'vendor_dashboard' : 'dashboard');
       } catch (e) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
@@ -63,17 +88,18 @@ export default function App() {
     return () => window.removeEventListener('auth:unauthorized', handleUnauth);
   }, []);
 
-  // Update pending queue count
+  // Refresh counts on tab or auth change
   useEffect(() => {
-    if (token) {
-      fetchPendingCount();
+    if (token && user) {
+      fetchBadgeCounts();
     }
-  }, [token, activeTab, fetchPendingCount]);
+  }, [token, user, activeTab, fetchBadgeCounts]);
 
   const handleLoginSuccess = (userData, userToken) => {
     setUser(userData);
     setToken(userToken);
-    setActiveTab('dashboard');
+    const defaultTab = userData.role === 'Vendor' ? 'vendor_dashboard' : 'dashboard';
+    setActiveTab(defaultTab);
     showToast(`Welcome back, ${userData.full_name} (${userData.role})`, 'success');
   };
 
@@ -83,7 +109,7 @@ export default function App() {
     setUser(null);
     setToken(null);
     setActiveTab('dashboard');
-    showToast('Signed out of ProcureIQ ERP', 'success');
+    showToast('Signed out of LokProcure ERP', 'success');
   };
 
   const handleSwitchPersona = async (email, password) => {
@@ -93,8 +119,9 @@ export default function App() {
       localStorage.setItem('user', JSON.stringify(data.user));
       setUser(data.user);
       setToken(data.access_token);
+      const targetTab = data.user.role === 'Vendor' ? 'vendor_dashboard' : 'dashboard';
+      setActiveTab(targetTab);
       showToast(`Switched persona to ${data.user.full_name} (${data.user.role})`, 'success');
-      fetchPendingCount();
     } catch (err) {
       showToast('Failed to switch persona', 'error');
     }
@@ -103,13 +130,13 @@ export default function App() {
   const handlePrCreated = (prId) => {
     setSelectedPrId(prId);
     setActiveTab('vendor_comparison');
-    showToast(`PR-${prId.toString().padStart(4, '0')} Created & RFQ Bids Broadcast!`, 'success');
-    fetchPendingCount();
+    showToast(`PR-${prId.toString().padStart(4, '0')} Created & RFQ Broadcast!`, 'success');
+    fetchBadgeCounts();
   };
 
   const handlePoGenerated = (po) => {
     showToast(`PO ${po.po_number} successfully authorized and PDF compiled!`, 'success');
-    fetchPendingCount();
+    fetchBadgeCounts();
   };
 
   if (authChecking) {
@@ -144,58 +171,153 @@ export default function App() {
         </div>
       )}
 
-      {/* Main ERP Sidebar */}
-      <Sidebar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        user={user}
-        onLogout={handleLogout}
-        onSwitchPersona={handleSwitchPersona}
-        pendingCount={pendingApprovalsCount}
-      />
-
-      {/* Main Content Area */}
-      <main className="flex-1 min-w-0 overflow-y-auto h-screen">
-        {activeTab === 'dashboard' && (
-          <Dashboard
-            onNavigateToTab={setActiveTab}
-            onSelectPrForComparison={(id) => {
-              setSelectedPrId(id);
-              setActiveTab('vendor_comparison');
-            }}
-            onTriggerNewPr={() => setActiveTab('new_pr')}
-          />
-        )}
-
-        {(activeTab === 'new_pr' || activeTab === 'purchase_requests') && (
-          <PurchaseRequestForm onPrCreated={handlePrCreated} />
-        )}
-
-        {activeTab === 'vendor_comparison' && (
-          <VendorComparison
-            selectedPrId={selectedPrId}
-            onSelectPr={setSelectedPrId}
-            onNavigateToTab={setActiveTab}
-            onPoGenerated={handlePoGenerated}
-          />
-        )}
-
-        {activeTab === 'approval_queue' && (
-          <ApprovalQueue
+      {/* PORTAL SEPARATION BY ROLE (Section 1) */}
+      {isVendor ? (
+        /* VENDOR PORTAL LAYOUT */
+        <>
+          <VendorSidebar
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
             user={user}
-            onNavigateToTab={setActiveTab}
-            onSelectPrForComparison={(id) => {
-              setSelectedPrId(id);
-              setActiveTab('vendor_comparison');
-            }}
-            onPoGenerated={handlePoGenerated}
+            onLogout={handleLogout}
+            onSwitchPersona={handleSwitchPersona}
+            bidsCount={vendorBidsCount}
           />
-        )}
 
-        {activeTab === 'purchase_orders' && (
-          <PurchaseOrders onNavigateToTab={setActiveTab} />
-        )}
-      </main>
+          <main className="flex-1 min-w-0 overflow-y-auto h-screen">
+            {activeTab === 'vendor_dashboard' && (
+              <VendorDashboard
+                user={user}
+                onNavigateToTab={setActiveTab}
+                onSelectOrderToBid={(order) => {
+                  setOrderToBid(order);
+                  setActiveTab('vendor_active_orders');
+                }}
+              />
+            )}
+
+            {activeTab === 'vendor_active_orders' && (
+              <VendorActiveOrders
+                onNavigateToMyBids={() => setActiveTab('vendor_my_bids')}
+                orderToBidInitially={orderToBid}
+              />
+            )}
+
+            {activeTab === 'vendor_my_bids' && (
+              <VendorMyBids
+                onNavigateToNegotiation={(prId) => {
+                  setSelectedPrId(prId);
+                  setActiveTab('vendor_negotiations');
+                }}
+                onNavigateToMarketplace={() => setActiveTab('vendor_active_orders')}
+              />
+            )}
+
+            {activeTab === 'vendor_negotiations' && (
+              <VendorNegotiations
+                user={user}
+                initialSessionId={null}
+              />
+            )}
+
+            {activeTab === 'vendor_awarded_orders' && (
+              <VendorAwardedOrders
+                onNavigateToMarketplace={() => setActiveTab('vendor_active_orders')}
+              />
+            )}
+          </main>
+        </>
+      ) : (
+        /* GOVERNMENT PORTAL LAYOUT */
+        <>
+          <GovSidebar
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            user={user}
+            onLogout={handleLogout}
+            onSwitchPersona={handleSwitchPersona}
+            pendingCount={pendingApprovalsCount}
+          />
+
+          <main className="flex-1 min-w-0 overflow-y-auto h-screen">
+            {activeTab === 'dashboard' && (
+              <Dashboard
+                onNavigateToTab={setActiveTab}
+                onSelectPrForComparison={(id) => {
+                  setSelectedPrId(id);
+                  setActiveTab('vendor_comparison');
+                }}
+                onTriggerNewPr={() => setActiveTab('new_pr')}
+              />
+            )}
+
+            {activeTab === 'orders' && (
+              <GovOrders
+                onSelectPrForBids={(id) => {
+                  setSelectedPrId(id);
+                  setActiveTab('active_bids');
+                }}
+                onSelectPrForComparison={(id) => {
+                  setSelectedPrId(id);
+                  setActiveTab('vendor_comparison');
+                }}
+                onTriggerNewPr={() => setActiveTab('new_pr')}
+              />
+            )}
+
+            {(activeTab === 'new_pr' || activeTab === 'purchase_requests') && (
+              <PurchaseRequestForm onPrCreated={handlePrCreated} />
+            )}
+
+            {activeTab === 'active_bids' && (
+              <GovActiveBids
+                initialPrId={selectedPrId}
+                onNavigateToComparison={(id) => {
+                  setSelectedPrId(id);
+                  setActiveTab('vendor_comparison');
+                }}
+                onOpenNegotiation={(id) => {
+                  setSelectedPrId(id);
+                  setActiveTab('negotiations');
+                }}
+              />
+            )}
+
+            {activeTab === 'vendor_comparison' && (
+              <VendorComparison
+                selectedPrId={selectedPrId}
+                onSelectPr={setSelectedPrId}
+                onNavigateToTab={setActiveTab}
+                onPoGenerated={handlePoGenerated}
+              />
+            )}
+
+            {activeTab === 'negotiations' && (
+              <GovNegotiations
+                user={user}
+                initialPrId={selectedPrId}
+                onNavigateToTab={setActiveTab}
+              />
+            )}
+
+            {activeTab === 'approval_queue' && (
+              <ApprovalQueue
+                user={user}
+                onNavigateToTab={setActiveTab}
+                onSelectPrForComparison={(id) => {
+                  setSelectedPrId(id);
+                  setActiveTab('vendor_comparison');
+                }}
+                onPoGenerated={handlePoGenerated}
+              />
+            )}
+
+            {activeTab === 'purchase_orders' && (
+              <PurchaseOrders onNavigateToTab={setActiveTab} />
+            )}
+          </main>
+        </>
+      )}
     </div>
   );
 }

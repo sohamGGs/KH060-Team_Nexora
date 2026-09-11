@@ -47,6 +47,15 @@ const DEMO_PERSONAS = [
     department: 'Engineering',
     desc: 'Approver for Rule 4: Standard Departmental PRs',
     badge: 'Rule 4 Approver'
+  },
+  {
+    role: 'Vendor',
+    name: 'Vikram Malhotra',
+    email: 'vendor@apex.internal',
+    password: 'vendor123',
+    department: 'Apex Global Industrial',
+    desc: 'Vendor Marketplace: Browse RFQ orders, submit bids & negotiate via AI',
+    badge: 'Vendor Portal'
   }
 ];
 

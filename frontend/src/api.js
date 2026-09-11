@@ -69,7 +69,7 @@ export const prAPI = {
   },
 };
 
-// --- VENDORS API ---
+// --- VENDORS API (GOVERNMENT FACING) ---
 export const vendorAPI = {
   getAll: async () => {
     const response = await api.get('/vendors');
@@ -81,6 +81,76 @@ export const vendorAPI = {
   },
   negotiate: async (prId) => {
     const response = await api.post(`/vendors/negotiate/${prId}`);
+    return response.data;
+  },
+  getAllNegotiations: async () => {
+    const response = await api.get('/gov/vendors/negotiations');
+    return response.data;
+  },
+  getNegotiationHistory: async (sessionId) => {
+    const response = await api.get(`/gov/vendors/negotiation/${sessionId}`);
+    return response.data;
+  },
+  actionEscalation: async (sessionId, decision, comment) => {
+    const response = await api.post(`/gov/vendors/negotiation/${sessionId}/escalation`, {
+      decision,
+      comment,
+    });
+    return response.data;
+  },
+  resumeNegotiation: async (sessionId) => {
+    const response = await api.post(`/gov/vendors/negotiation/${sessionId}/resume`);
+    return response.data;
+  },
+};
+
+// --- NEGOTIATIONS API ---
+export const negotiationsAPI = {
+  getAll: async () => {
+    const response = await api.get('/gov/vendors/negotiations');
+    return response.data;
+  },
+  getHistory: async (sessionId) => {
+    const response = await api.get(`/gov/vendors/negotiation/${sessionId}`);
+    return response.data;
+  },
+  actionEscalation: async (sessionId, decision, comment) => {
+    const response = await api.post(`/gov/vendors/negotiation/${sessionId}/escalation`, {
+      decision,
+      comment,
+    });
+    return response.data;
+  },
+  resumeNegotiation: async (sessionId) => {
+    const response = await api.post(`/gov/vendors/negotiation/${sessionId}/resume`);
+    return response.data;
+  },
+  negotiate: async (prId) => {
+    const response = await api.post(`/gov/vendors/negotiate/${prId}`);
+    return response.data;
+  },
+};
+
+// --- VENDOR PORTAL API ---
+export const vendorPortalAPI = {
+  getOrders: async () => {
+    const response = await api.get('/vendor/orders');
+    return response.data;
+  },
+  getMyBids: async () => {
+    const response = await api.get('/vendor/bids');
+    return response.data;
+  },
+  submitBid: async (bidData) => {
+    const response = await api.post('/vendor/bids', bidData);
+    return response.data;
+  },
+  getNegotiations: async () => {
+    const response = await api.get('/vendor/negotiation');
+    return response.data;
+  },
+  getNegotiationDetail: async (sessionId) => {
+    const response = await api.get(`/vendor/negotiation/${sessionId}`);
     return response.data;
   },
 };

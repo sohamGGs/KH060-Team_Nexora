@@ -28,6 +28,15 @@ const DEPARTMENTS = [
   'Facilities & MRO'
 ];
 
+const CATEGORIES = [
+  'Industrial Equipment',
+  'Robotics & Automation',
+  'Electronics & Sensors',
+  'Raw Materials',
+  'MRO & Logistics',
+  'IT Infrastructure'
+];
+
 const URGENCIES = [
   { value: 'Low', label: 'Low (Standard 10-14 days SLA)', color: 'border-slate-300 text-slate-700' },
   { value: 'Medium', label: 'Medium (Standard 5-7 days SLA)', color: 'border-blue-200 text-blue-700' },
@@ -42,6 +51,7 @@ const PRESETS = [
     desc: 'Heavy industrial automated conveyor system with integrated PLC logic controllers and high-speed optical inspection for Line #2.',
     qty: 2,
     dept: 'Operations',
+    category: 'Industrial Equipment',
     urgency: 'High',
     budget: 135000,
     badge: 'Routes to Plant Head',
@@ -53,6 +63,7 @@ const PRESETS = [
     desc: 'Critical emergency overhaul kit for plant stamping presses to prevent catastrophic line downtime during peak shift.',
     qty: 600,
     dept: 'Operations',
+    category: 'MRO & Logistics',
     urgency: 'Critical',
     budget: 72000,
     badge: 'Routes to VP Operations',
@@ -64,6 +75,7 @@ const PRESETS = [
     desc: 'Automated high-capacity robotic palletizer cell for central warehouse distribution hub.',
     qty: 1,
     dept: 'Operations',
+    category: 'Robotics & Automation',
     urgency: 'High',
     budget: 185000,
     badge: 'Exceeds $150k Cap',
@@ -75,6 +87,7 @@ const PRESETS = [
     desc: 'Annual recurring subscription for high-availability enterprise database hosting and disaster recovery nodes.',
     qty: 1,
     dept: 'IT',
+    category: 'IT Infrastructure',
     urgency: 'Medium',
     budget: 48000,
     badge: 'Renewal Clause Needed',
@@ -85,6 +98,7 @@ const PRESETS = [
 export default function PurchaseRequestForm({ onPrCreated }) {
   const [title, setTitle] = useState('');
   const [itemDescription, setItemDescription] = useState('');
+  const [category, setCategory] = useState('Industrial Equipment');
   const [quantity, setQuantity] = useState(1);
   const [department, setDepartment] = useState('Operations');
   const [urgency, setUrgency] = useState('Medium');
@@ -136,6 +150,7 @@ export default function PurchaseRequestForm({ onPrCreated }) {
     setItemDescription(preset.desc);
     setQuantity(preset.qty);
     setDepartment(preset.dept);
+    if (preset.category) setCategory(preset.category);
     setUrgency(preset.urgency);
     setEstimatedBudget(preset.budget);
     setError('');
@@ -150,6 +165,7 @@ export default function PurchaseRequestForm({ onPrCreated }) {
       const payload = {
         title: title.trim(),
         item_description: itemDescription.trim(),
+        category: category.trim(),
         quantity: parseInt(quantity, 10),
         urgency,
         department,
@@ -235,6 +251,9 @@ export default function PurchaseRequestForm({ onPrCreated }) {
                 RFQ bids have been broadcast to 8 qualified suppliers and the approval workflow is active.
               </p>
               <div className="pt-1.5 flex flex-wrap gap-2 text-xs">
+                <span className="px-2.5 py-0.5 rounded bg-indigo-50 border border-indigo-200 text-indigo-700 text-[11px] font-medium">
+                  Category: <strong className="text-slate-900">{successData.category || category}</strong>
+                </span>
                 <span className="px-2.5 py-0.5 rounded bg-[#f3f2ec] border border-[#e8e6df] text-slate-700 text-[11px]">
                   Assigned Rule: <strong className="text-slate-900">{successData.assigned_approval_rule}</strong>
                 </span>
@@ -383,6 +402,22 @@ export default function PurchaseRequestForm({ onPrCreated }) {
                 placeholder="Provide detailed technical specifications, model requirements, tolerance limits, and operational context..."
                 className="w-full bg-white border border-[#dcd9ce] rounded-lg px-3.5 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-500 shadow-sm"
               />
+            </div>
+
+            {/* Category */}
+            <div className="space-y-1">
+              <label className="block text-xs font-medium text-slate-700">
+                Procurement Category <span className="text-rose-600">*</span>
+              </label>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="w-full bg-white border border-[#dcd9ce] rounded-lg px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-500 cursor-pointer shadow-sm font-medium"
+              >
+                {CATEGORIES.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
             </div>
 
             {/* Quantity & Department */}
