@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Shield, Sparkles, Building2, UserCheck, ArrowRight, Lock, Mail, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { authAPI } from '../api';
-
 const DEMO_PERSONAS = [
   {
     role: 'Lead Procurement Officer',
@@ -18,7 +17,7 @@ const DEMO_PERSONAS = [
     email: 'planthead@procureiq.internal',
     password: 'plant123',
     department: 'Operations',
-    desc: 'Approver for Rule 1: Operations CapEx > $100,000',
+    desc: 'Approver for Rule 1: Operations CapEx > ₹1,00,000',
     badge: 'Rule 1 Approver'
   },
   {
@@ -36,7 +35,7 @@ const DEMO_PERSONAS = [
     email: 'finance@procureiq.internal',
     password: 'finance123',
     department: 'Finance',
-    desc: 'Approver for Rule 3: High Value Purchase > $50,000',
+    desc: 'Approver for Rule 3: High Value Purchase > ₹50,000',
     badge: 'Rule 3 Approver'
   },
   {
@@ -58,21 +57,17 @@ const DEMO_PERSONAS = [
     badge: 'Vendor Portal'
   }
 ];
-
 export default function Login({ onLoginSuccess }) {
   const [email, setEmail] = useState('admin@procureiq.internal');
   const [password, setPassword] = useState('admin123');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
   const handleLogin = async (e, customEmail, customPassword) => {
     if (e) e.preventDefault();
     const loginEmail = customEmail || email;
     const loginPassword = customPassword || password;
-
     setError('');
     setLoading(true);
-
     try {
       const data = await authAPI.login(loginEmail, loginPassword);
       localStorage.setItem('token', data.access_token);
@@ -85,15 +80,16 @@ export default function Login({ onLoginSuccess }) {
       setLoading(false);
     }
   };
-
   const handleQuickPersona = (persona) => {
     setEmail(persona.email);
     setPassword(persona.password);
     handleLogin(null, persona.email, persona.password);
   };
-
   return (
-    <div className="min-h-screen w-full bg-[#f5f4f0] flex flex-col justify-center items-center px-4 py-10 relative">
+    <div className="min-h-screen w-full bg-gradient-to-br from-[#f8f9fa] to-[#e9ecef] flex flex-col justify-center items-center px-4 py-10 relative overflow-hidden">
+      {/* Architectural Glass Elements */}
+      <div className="absolute top-0 left-0 w-full h-[50%] bg-white/40 border-b border-white/60 shadow-[0_4px_30px_rgba(0,0,0,0.02)] backdrop-blur-3xl pointer-events-none z-0"></div>
+      <div className="absolute top-[-10%] right-[-5%] w-[40%] h-[50%] bg-amber-50/40 rounded-full blur-3xl pointer-events-none z-0"></div>
       {/* Main Container */}
       <div className="w-full max-w-5xl z-10 space-y-8">
         {/* Header Branding */}
@@ -109,25 +105,22 @@ export default function Login({ onLoginSuccess }) {
             Bilateral AI Agent Negotiation, Deterministic Policy Guardrails, and Human-in-the-Loop Escalation.
           </p>
         </div>
-
         {/* 2-Column Section: Left is Form, Right is Quick Personas */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Left Column: Direct Login */}
-          <div className="lg:col-span-5 enterprise-card p-6 md:p-7 space-y-5 bg-[#fbfbfa] border border-[#e8e6df] shadow-xl">
+          <div className="lg:col-span-5 p-6 md:p-7 space-y-5 bg-white/70 backdrop-blur-md border border-white/40 shadow-xl rounded-xl relative z-10">
             <div className="border-b border-[#e8e6df] pb-3">
               <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
                 <Lock className="w-4 h-4 text-blue-600" /> Sign In
               </h2>
               <p className="text-slate-500 text-xs mt-0.5">Authenticate with your corporate credentials</p>
             </div>
-
             {error && (
               <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2 animate-fade-in">
                 <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
                 <span>{error}</span>
               </div>
             )}
-
             <form onSubmit={handleLogin} className="space-y-3.5">
               <div className="space-y-1">
                 <label className="block text-xs font-medium text-slate-700">Corporate Email</label>
@@ -143,7 +136,6 @@ export default function Login({ onLoginSuccess }) {
                   />
                 </div>
               </div>
-
               <div className="space-y-1">
                 <label className="block text-xs font-medium text-slate-700">Password</label>
                 <div className="relative">
@@ -158,7 +150,6 @@ export default function Login({ onLoginSuccess }) {
                   />
                 </div>
               </div>
-
               <button
                 type="submit"
                 disabled={loading}
@@ -174,7 +165,6 @@ export default function Login({ onLoginSuccess }) {
                 )}
               </button>
             </form>
-
             <div className="pt-3 border-t border-[#e8e6df] text-[11px] text-slate-500 flex items-center justify-between">
               <span className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> NetSuite Sandbox Synced
@@ -182,9 +172,8 @@ export default function Login({ onLoginSuccess }) {
               <span className="font-mono text-[10px]">v1.0.0</span>
             </div>
           </div>
-
           {/* Right Column: Quick Demo Persona Switcher */}
-          <div className="lg:col-span-7 enterprise-card p-6 space-y-4 bg-[#fbfbfa] border border-[#e8e6df] shadow-xl">
+          <div className="lg:col-span-7 p-6 space-y-4 bg-white/70 backdrop-blur-md border border-white/40 shadow-xl rounded-xl relative z-10">
             <div className="flex items-center justify-between border-b border-[#e8e6df] pb-3">
               <div>
                 <h2 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
@@ -198,7 +187,6 @@ export default function Login({ onLoginSuccess }) {
                 6 Roles (Gov &amp; Vendor)
               </span>
             </div>
-
             <div className="space-y-2">
               {DEMO_PERSONAS.map((persona) => (
                 <button
@@ -206,7 +194,7 @@ export default function Login({ onLoginSuccess }) {
                   type="button"
                   onClick={() => handleQuickPersona(persona)}
                   disabled={loading}
-                  className="w-full text-left p-3 rounded-lg bg-[#f5f4f0] border border-[#e8e6df] hover:border-[#d8d5ca] hover:bg-[#eeebe3] transition-colors group flex items-center justify-between cursor-pointer disabled:opacity-50 shadow-sm"
+                  className="w-full text-left p-3 rounded-lg bg-white/50 backdrop-blur-sm border border-white/60 hover:border-blue-200 hover:bg-white/80 transition-colors group flex items-center justify-between cursor-pointer disabled:opacity-50 shadow-sm"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded bg-[#e8e6df] text-slate-700 font-bold text-xs flex items-center justify-center">
@@ -224,7 +212,6 @@ export default function Login({ onLoginSuccess }) {
                       <p className="text-slate-500 text-[11px] mt-0.5 line-clamp-1">{persona.desc}</p>
                     </div>
                   </div>
-
                   <div className="flex items-center gap-1.5">
                     <span className="hidden sm:inline-block text-[10px] text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity font-medium">
                       Select
@@ -234,7 +221,6 @@ export default function Login({ onLoginSuccess }) {
                 </button>
               ))}
             </div>
-
             <div className="p-3 rounded-lg bg-[#f5f4f0] border border-[#e8e6df] flex items-center justify-between text-[11px] text-slate-600">
               <span className="flex items-center gap-1.5 text-slate-700">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
