@@ -148,6 +148,7 @@ def create_purchase_request(
     # 1. Create Purchase Request
     pr = models.PurchaseRequest(
         title=payload.title,
+        category=payload.category or "Industrial Equipment",
         item_description=payload.item_description,
         quantity=payload.quantity,
         urgency=payload.urgency,

@@ -502,6 +502,36 @@ def run_autonomous_negotiation_endpoint(
     )
 
 
+@router.get("/negotiations")
+def list_all_negotiations(db: Session = Depends(get_db)):
+    sessions = db.query(NegotiationSession).order_by(NegotiationSession.id.desc()).all()
+    out = []
+    for s in sessions:
+        bid = db.query(VendorBid).filter(VendorBid.id == s.vendor_bid_id).first()
+        pr_id = bid.pr_id if bid else None
+        pr = db.query(PurchaseRequest).filter(PurchaseRequest.id == pr_id).first() if pr_id else None
+        vendor = db.query(Vendor).filter(Vendor.id == bid.vendor_id).first() if bid else None
+        event_count = db.query(NegotiationEvent).filter(NegotiationEvent.negotiation_session_id == s.id).count()
+        escalation = db.query(NegotiationEscalation).filter(NegotiationEscalation.negotiation_session_id == s.id).order_by(NegotiationEscalation.id.desc()).first()
+        out.append({
+            "id": s.id,
+            "session_id": s.id,
+            "purchase_request_id": pr_id,
+            "pr_title": pr.title if pr else f"PR #{pr_id}",
+            "vendor_id": vendor.id if vendor else None,
+            "vendor_name": vendor.name if vendor else "Vendor",
+            "status": s.status,
+            "current_round": s.current_round,
+            "current_price": s.current_price,
+            "current_delivery_days": s.current_delivery_days,
+            "event_count": event_count,
+            "escalation_id": escalation.id if escalation and escalation.status == "PENDING" else None,
+            "created_at": s.created_at.isoformat() if s.created_at else None,
+            "updated_at": s.updated_at.isoformat() if s.updated_at else None,
+        })
+    return out
+
+
 @router.get(
     "/negotiation/{session_id}",
     response_model=NegotiationHistoryResponse,
