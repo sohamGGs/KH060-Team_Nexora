@@ -36,6 +36,13 @@ export default function App() {
 
   const isVendor = user?.role === 'Vendor';
 
+  const VENDOR_TABS = ['vendor_dashboard', 'vendor_active_orders', 'vendor_my_bids', 'vendor_negotiations', 'vendor_awarded_orders'];
+  const GOV_TABS = ['dashboard', 'orders', 'new_pr', 'purchase_requests', 'active_bids', 'vendor_comparison', 'negotiations', 'approval_queue', 'purchase_orders'];
+
+  const effectiveTab = isVendor
+    ? (VENDOR_TABS.includes(activeTab) ? activeTab : 'vendor_dashboard')
+    : (GOV_TABS.includes(activeTab) ? activeTab : 'dashboard');
+
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
     setTimeout(() => {
@@ -176,7 +183,7 @@ export default function App() {
         /* VENDOR PORTAL LAYOUT */
         <>
           <VendorSidebar
-            activeTab={activeTab}
+            activeTab={effectiveTab}
             setActiveTab={setActiveTab}
             user={user}
             onLogout={handleLogout}
@@ -185,7 +192,7 @@ export default function App() {
           />
 
           <main className="flex-1 min-w-0 overflow-y-auto h-screen">
-            {activeTab === 'vendor_dashboard' && (
+            {effectiveTab === 'vendor_dashboard' && (
               <VendorDashboard
                 user={user}
                 onNavigateToTab={setActiveTab}
@@ -196,14 +203,14 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'vendor_active_orders' && (
+            {effectiveTab === 'vendor_active_orders' && (
               <VendorActiveOrders
                 onNavigateToMyBids={() => setActiveTab('vendor_my_bids')}
                 orderToBidInitially={orderToBid}
               />
             )}
 
-            {activeTab === 'vendor_my_bids' && (
+            {effectiveTab === 'vendor_my_bids' && (
               <VendorMyBids
                 onNavigateToNegotiation={(prId) => {
                   setSelectedPrId(prId);
@@ -213,14 +220,14 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'vendor_negotiations' && (
+            {effectiveTab === 'vendor_negotiations' && (
               <VendorNegotiations
                 user={user}
                 initialSessionId={null}
               />
             )}
 
-            {activeTab === 'vendor_awarded_orders' && (
+            {effectiveTab === 'vendor_awarded_orders' && (
               <VendorAwardedOrders
                 onNavigateToMarketplace={() => setActiveTab('vendor_active_orders')}
               />
@@ -231,7 +238,7 @@ export default function App() {
         /* GOVERNMENT PORTAL LAYOUT */
         <>
           <GovSidebar
-            activeTab={activeTab}
+            activeTab={effectiveTab}
             setActiveTab={setActiveTab}
             user={user}
             onLogout={handleLogout}
@@ -240,7 +247,7 @@ export default function App() {
           />
 
           <main className="flex-1 min-w-0 overflow-y-auto h-screen">
-            {activeTab === 'dashboard' && (
+            {effectiveTab === 'dashboard' && (
               <Dashboard
                 onNavigateToTab={setActiveTab}
                 onSelectPrForComparison={(id) => {
@@ -251,7 +258,7 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'orders' && (
+            {effectiveTab === 'orders' && (
               <GovOrders
                 onSelectPrForBids={(id) => {
                   setSelectedPrId(id);
@@ -265,11 +272,11 @@ export default function App() {
               />
             )}
 
-            {(activeTab === 'new_pr' || activeTab === 'purchase_requests') && (
+            {(effectiveTab === 'new_pr' || effectiveTab === 'purchase_requests') && (
               <PurchaseRequestForm onPrCreated={handlePrCreated} />
             )}
 
-            {activeTab === 'active_bids' && (
+            {effectiveTab === 'active_bids' && (
               <GovActiveBids
                 initialPrId={selectedPrId}
                 onNavigateToComparison={(id) => {
@@ -283,7 +290,7 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'vendor_comparison' && (
+            {effectiveTab === 'vendor_comparison' && (
               <VendorComparison
                 selectedPrId={selectedPrId}
                 onSelectPr={setSelectedPrId}
@@ -292,7 +299,7 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'negotiations' && (
+            {effectiveTab === 'negotiations' && (
               <GovNegotiations
                 user={user}
                 initialPrId={selectedPrId}
@@ -300,7 +307,7 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'approval_queue' && (
+            {effectiveTab === 'approval_queue' && (
               <ApprovalQueue
                 user={user}
                 onNavigateToTab={setActiveTab}
@@ -312,7 +319,7 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'purchase_orders' && (
+            {effectiveTab === 'purchase_orders' && (
               <PurchaseOrders onNavigateToTab={setActiveTab} />
             )}
           </main>

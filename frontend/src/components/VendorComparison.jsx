@@ -421,7 +421,7 @@ export default function VendorComparison({
                             </span>
                           ) : hasSavings ? (
                             <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono">
-                              -${vr.savings_amount.toLocaleString()} ({vr.savings_pct.toFixed(1)}%)
+                              -${(vr.savings_amount || 0).toLocaleString()} ({Number(vr.savings_pct || 0).toFixed(1)}%)
                             </span>
                           ) : (
                             <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#f3f2ec] text-slate-600 border border-[#e8e6df]">
@@ -434,10 +434,10 @@ export default function VendorComparison({
                           <h4 className="text-xs font-bold text-slate-900 truncate">{vr.vendor_name}</h4>
                           <div className="flex items-center justify-between text-xs pt-0.5 font-mono">
                             <span className="text-slate-500 text-[11px]">
-                              Init: <span className="line-through">${vr.original_price.toLocaleString()}</span>
+                              Init: <span className="line-through">${(vr.original_price ?? vr.quoted_price ?? 0).toLocaleString()}</span>
                             </span>
                             <span className="text-emerald-700 font-semibold text-xs">
-                              Final: ${vr.negotiated_price.toLocaleString()}
+                              Final: ${(vr.negotiated_price ?? vr.quoted_price ?? 0).toLocaleString()}
                             </span>
                           </div>
                           <div className="flex items-center justify-between text-[10px] text-slate-500 pt-0.5">
@@ -472,7 +472,7 @@ export default function VendorComparison({
                               >
                                 <p>{turn.message}</p>
                                 <div className="flex items-center gap-2 pt-1 border-t border-[#e8e6df] text-[10px] font-mono text-slate-500">
-                                  <span>Offer: <strong className="text-slate-900">${turn.offered_price.toLocaleString()}</strong></span>
+                                  <span>Offer: <strong className="text-slate-900">${(turn.offered_price || 0).toLocaleString()}</strong></span>
                                   <span>•</span>
                                   <span>SLA: <strong className="text-slate-900">{turn.offered_days}d</strong></span>
                                 </div>
@@ -485,7 +485,7 @@ export default function VendorComparison({
                       {/* Footer Action */}
                       <div className="p-2.5 bg-[#f5f4f0] border-t border-[#e8e6df] flex items-center justify-between">
                         <span className="text-[10px] text-slate-600">
-                          Score: <strong className="text-emerald-700 font-mono">{vr.updated_score?.toFixed(1) || '95.0'}/100</strong>
+                          Score: <strong className="text-emerald-700 font-mono">{Number(vr.updated_score || 0).toFixed(1) || '95.0'}/100</strong>
                         </span>
                         <button
                           type="button"
@@ -561,7 +561,7 @@ export default function VendorComparison({
                 </div>
                 <div className="text-xs text-emerald-700 font-medium flex items-center gap-1">
                   <DollarSign className="w-3 h-3" />
-                  Est. Savings: ${aiAudit.net_savings_estimate.toLocaleString()}
+                  Est. Savings: ${(aiAudit?.net_savings_estimate || 0).toLocaleString()}
                 </div>
               </div>
 
@@ -735,16 +735,16 @@ export default function VendorComparison({
                       {rec.original_quoted_price && rec.original_quoted_price > rec.quoted_price ? (
                         <div className="space-y-0.5">
                           <div className="text-[10px] text-slate-400 line-through">
-                            ${rec.original_quoted_price.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                            ${Number(rec.original_quoted_price || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                           </div>
                           <div className="text-emerald-700 font-bold flex items-center justify-end gap-1">
                             <Zap className="w-3 h-3" />
-                            ${rec.quoted_price.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                            ${Number(rec.quoted_price || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                           </div>
                         </div>
                       ) : (
                         <span className="text-slate-900">
-                          ${rec.quoted_price.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                          ${Number(rec.quoted_price || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                         </span>
                       )}
                     </td>
@@ -784,28 +784,28 @@ export default function VendorComparison({
 
                     {/* Price Score (30) */}
                     <td className="py-3 px-3 text-center font-mono text-slate-700 text-[11px]">
-                      {rec.scores.price_score.toFixed(1)}
+                      {Number(rec.scores?.price_score || 0).toFixed(1)}
                     </td>
 
                     {/* Delivery Score (25) */}
                     <td className="py-3 px-3 text-center font-mono text-slate-700 text-[11px]">
-                      {rec.scores.delivery_score.toFixed(1)}
+                      {Number(rec.scores?.delivery_score || 0).toFixed(1)}
                     </td>
 
                     {/* Reliability Score (25) */}
                     <td className="py-3 px-3 text-center font-mono text-slate-700 text-[11px]">
-                      {rec.scores.reliability_score.toFixed(1)}
+                      {Number(rec.scores?.reliability_score || 0).toFixed(1)}
                     </td>
 
                     {/* History Score (20) */}
                     <td className="py-3 px-3 text-center font-mono text-slate-700 text-[11px]">
-                      {rec.scores.history_score.toFixed(1)}
+                      {Number(rec.scores?.history_score || 0).toFixed(1)}
                     </td>
 
                     {/* ESG Nearshoring Bonus (+3) */}
                     <td className="py-3 px-3 text-center font-mono text-[11px]">
                       {rec.scores.nearshoring_bonus > 0 ? (
-                        <span className="text-emerald-700 font-semibold">+{rec.scores.nearshoring_bonus.toFixed(1)}</span>
+                        <span className="text-emerald-700 font-semibold">+{Number(rec.scores?.nearshoring_bonus || 0).toFixed(1)}</span>
                       ) : (
                         <span className="text-slate-400">-</span>
                       )}
@@ -829,7 +829,7 @@ export default function VendorComparison({
                           />
                         </div>
                         <span className={`font-bold tabular-nums text-xs ${getScoreColor(rec.scores.total_score)}`}>
-                          {rec.scores.total_score.toFixed(1)}
+                          {Number(rec.scores?.total_score || 0).toFixed(1)}
                         </span>
                       </div>
                     </td>

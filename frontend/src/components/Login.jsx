@@ -99,14 +99,14 @@ export default function Login({ onLoginSuccess }) {
         {/* Header Branding */}
         <div className="text-center space-y-2">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold uppercase tracking-wider">
-            <span>NetSuite-Integrated Procurement ERP</span>
+            <span>Two-Sided Procurement Marketplace &amp; Bilateral AI</span>
           </div>
           <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-slate-900 flex items-center justify-center gap-2">
-            ProcureIQ <span className="text-blue-600">Core</span>
+            LokProcure <span className="text-blue-600">ERP</span>
           </h1>
-          <p className="text-slate-500 text-xs md:text-sm max-w-xl mx-auto">
-            Autonomous Procurement Optimization Engine: Streamlining PR-to-PO lifecycle, 
-            Tiered Vendor Scoring, Multi-Rule Dynamic Approvals &amp; 3-Way Match Verification.
+          <p className="text-slate-500 text-xs md:text-sm max-w-2xl mx-auto">
+            Autonomous Two-Sided Procurement Marketplace: Unified Government Buyer &amp; Vendor Ecosystem with 
+            Bilateral AI Agent Negotiation, Deterministic Policy Guardrails, and Human-in-the-Loop Escalation.
           </p>
         </div>
 
@@ -195,7 +195,7 @@ export default function Login({ onLoginSuccess }) {
                 </p>
               </div>
               <span className="px-2 py-0.5 rounded bg-[#f3f2ec] text-slate-700 border border-[#e8e6df] text-[10px] font-semibold">
-                5 Roles
+                6 Roles (Gov &amp; Vendor)
               </span>
             </div>
 

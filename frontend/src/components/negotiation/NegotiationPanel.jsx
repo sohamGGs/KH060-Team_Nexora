@@ -47,49 +47,59 @@ export default function NegotiationPanel({
   // Format Status Badge
   const renderStatusBadge = (status) => {
     switch (status?.toUpperCase()) {
-      case 'ACCEPTED':
       case 'COMPLETED':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-sm">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" /> COMPLETED
+          </span>
+        );
+      case 'ACCEPTED':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-300 shadow-sm">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> ACCEPTED
           </span>
         );
       case 'NEGOTIATING':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 animate-pulse">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-blue-50 text-blue-700 border border-blue-300 animate-pulse shadow-sm">
             <Bot className="w-3.5 h-3.5 text-blue-600" /> NEGOTIATING
+          </span>
+        );
+      case 'ESCALATED':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-amber-100 text-amber-900 border border-amber-400 shadow-sm animate-pulse">
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-700" /> ESCALATED
           </span>
         );
       case 'PENDING_GOV_APPROVAL':
       case 'PENDING_APPROVAL':
-      case 'ESCALATED':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-300">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-amber-50 text-amber-900 border border-amber-300 shadow-sm">
             <AlertTriangle className="w-3.5 h-3.5 text-amber-600" /> PENDING GOV APPROVAL
           </span>
         );
       case 'PENDING_VENDOR_APPROVAL':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-purple-50 text-purple-800 border border-purple-200">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-purple-50 text-purple-900 border border-purple-300 shadow-sm">
             <Clock className="w-3.5 h-3.5 text-purple-600" /> PENDING VENDOR APPROVAL
           </span>
         );
       case 'REJECTED':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-rose-50 text-rose-800 border border-rose-300 shadow-sm">
             <XCircle className="w-3.5 h-3.5 text-rose-600" /> REJECTED
           </span>
         );
       case 'RESUMED':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-teal-50 text-teal-800 border border-teal-200">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-teal-50 text-teal-800 border border-teal-300 shadow-sm">
             <RotateCcw className="w-3.5 h-3.5 text-teal-600" /> RESUMED
           </span>
         );
       case 'INITIATED':
       default:
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-300">
             <Clock className="w-3.5 h-3.5 text-slate-500" /> INITIATED
           </span>
         );
@@ -416,6 +426,26 @@ export default function NegotiationPanel({
         </div>
       )}
 
+      {/* Informational Card for Government when Vendor Escalation is Pending */}
+      {isGovUser && isPendingVendorState && (
+        <div className="p-4 rounded-lg bg-purple-50/80 border-2 border-purple-200 text-purple-900 flex items-start gap-3 shadow-sm">
+          <div className="w-7 h-7 rounded-md bg-purple-600 text-white flex items-center justify-center shrink-0 mt-0.5">
+            <Clock className="w-4 h-4" />
+          </div>
+          <div>
+            <span className="text-[10px] uppercase font-mono font-bold tracking-wider text-purple-700 block">
+              Awaiting Counterparty Concession
+            </span>
+            <h4 className="text-sm font-bold text-purple-950">
+              Vendor Commercial Leadership Review
+            </h4>
+            <p className="text-xs text-purple-800 mt-1 leading-relaxed">
+              The vendor sales agent has escalated government terms to vendor corporate management for margin concession approval. The negotiation is paused awaiting their review.
+            </p>
+          </div>
+        </div>
+      )}
+
       {isVendorUser && isPendingVendorState && (
         <div className="p-4 rounded-lg bg-purple-50/80 border-2 border-purple-300 space-y-3 shadow-sm">
           <div className="flex items-start justify-between gap-2">
@@ -483,6 +513,26 @@ export default function NegotiationPanel({
                 <span>Reject</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Informational Card for Vendor when Government Escalation is Pending */}
+      {isVendorUser && isPendingGovState && (
+        <div className="p-4 rounded-lg bg-amber-50/80 border-2 border-amber-200 text-amber-900 flex items-start gap-3 shadow-sm">
+          <div className="w-7 h-7 rounded-md bg-amber-600 text-white flex items-center justify-center shrink-0 mt-0.5">
+            <AlertTriangle className="w-4 h-4" />
+          </div>
+          <div>
+            <span className="text-[10px] uppercase font-mono font-bold tracking-wider text-amber-800 block">
+              Awaiting Procurement Approval
+            </span>
+            <h4 className="text-sm font-bold text-amber-950">
+              Government Supervisory Authority Review
+            </h4>
+            <p className="text-xs text-amber-900 mt-1 leading-relaxed">
+              Your proposal reached algorithmic government spending boundaries and has been escalated to human procurement officers for formal exception approval.
+            </p>
           </div>
         </div>
       )}
