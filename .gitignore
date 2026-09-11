@@ -32,3 +32,4 @@ frontend/dist/
 # OS
 Thumbs.db
 .DS_Store
+backend/app/compliance/chroma_db/
