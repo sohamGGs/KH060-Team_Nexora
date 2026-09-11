@@ -293,6 +293,12 @@ class NegotiationSession(Base):
         cascade="all, delete-orphan",
         order_by="PolicyDecision.created_at",
     )
+    escalations = relationship(
+        "NegotiationEscalation",
+        back_populates="negotiation_session",
+        cascade="all, delete-orphan",
+        order_by="NegotiationEscalation.created_at",
+    )
 
     __table_args__ = (
         UniqueConstraint(
@@ -330,3 +336,66 @@ class PolicyDecision(Base):
         "NegotiationSession",
         back_populates="policy_decisions",
     )
+
+
+class NegotiationEscalation(Base):
+    __tablename__ = "negotiation_escalations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    negotiation_session_id = Column(
+        Integer,
+        ForeignKey("negotiation_sessions.id"),
+        nullable=False,
+        index=True,
+    )
+    policy_decision_id = Column(
+        Integer,
+        ForeignKey("policy_decisions.id"),
+        nullable=False,
+        index=True,
+    )
+    pr_id = Column(
+        Integer,
+        ForeignKey("purchase_requests.id"),
+        nullable=False,
+        index=True,
+    )
+    vendor_id = Column(
+        Integer,
+        ForeignKey("vendors.id"),
+        nullable=False,
+        index=True,
+    )
+    required_role = Column(String(100), nullable=False)
+    approver_id = Column(
+        Integer,
+        ForeignKey("users.id"),
+        nullable=True,
+        index=True,
+    )
+    status = Column(
+        String(50),
+        default="PENDING",
+        nullable=False,
+        index=True,
+    )
+    reason = Column(String(255), nullable=False)
+    proposed_price = Column(Float, nullable=False)
+    proposed_days = Column(Integer, nullable=False)
+    variance_amount = Column(Float, default=0.0, nullable=False)
+    approver_comment = Column(Text, nullable=True)
+    created_at = Column(
+        DateTime,
+        default=datetime.datetime.utcnow,
+        nullable=False,
+    )
+    actioned_at = Column(DateTime, nullable=True)
+
+    negotiation_session = relationship(
+        "NegotiationSession",
+        back_populates="escalations",
+    )
+    policy_decision = relationship("PolicyDecision")
+    purchase_request = relationship("PurchaseRequest")
+    vendor = relationship("Vendor")
+    approver = relationship("User")
