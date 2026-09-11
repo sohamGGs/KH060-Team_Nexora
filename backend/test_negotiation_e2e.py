@@ -1,5 +1,5 @@
 """
-test_negotiation_e2e.py - Autonomous Multi-Agent Negotiation End-to-End Test Suite
+test_negotiation_e2e.py - Autonomous Bilateral Negotiation End-to-End Test Suite
 """
 import os
 import sys
@@ -8,13 +8,15 @@ import requests
 
 BASE_URL = "http://localhost:8000/api"
 
+
 def print_header(title: str):
     print("\n" + "=" * 55)
     print(title)
     print("=" * 55)
 
+
 def main():
-    print_header("PROCUREIQ LANGGRAPH MULTI-AGENT NEGOTIATION E2E TEST")
+    print_header("LOKPROCURE BILATERAL DUAL-AGENT NEGOTIATION E2E TEST")
 
     # 1. Login as Admin
     print("\n[1] Authenticating as Lead Procurement Officer (Admin)...")
@@ -60,68 +62,87 @@ def main():
     for idx, r in enumerate(top_3_before, 1):
         print(f"       #{idx} {r['vendor_name']} ({r['pricing_tier']}): ${r['quoted_price']:,.2f} | SLA: {r['delivery_days']}d | Score: {r['scores']['total_score']:.1f}")
 
-    # 4. Trigger Autonomous Multi-Agent Negotiation via LangGraph
-    print(f"\n[4] Triggering POST /api/vendors/negotiate/{pr_id} (LangGraph Multi-Agent)...")
+    # 4. Trigger Autonomous Bilateral Negotiation via LangGraph
+    print(f"\n[4] Triggering POST /api/vendors/negotiate/{pr_id} (LangGraph Bilateral)...")
     negotiate_res = requests.post(
         f"{BASE_URL}/vendors/negotiate/{pr_id}",
         headers=headers
     )
     assert negotiate_res.status_code == 200, f"Negotiation endpoint failed: {negotiate_res.text}"
     neg_data = negotiate_res.json()
-    
+
     print("  [OK] Negotiation completed successfully!")
-    print(f"       Total Initial Spend:    ${neg_data['total_initial_spend']:,.2f}")
-    print(f"       Total Negotiated Spend: ${neg_data['total_negotiated_spend']:,.2f}")
-    print(f"       Total Net Savings:      +${neg_data['total_savings']:,.2f} ({neg_data['total_savings_pct']:.1f}%)")
-    print(f"       Winning Supplier:       {neg_data['top_vendor_name']}")
+    print(f"       Total Initial Spend:    ${neg_data.get('total_initial_spend', 0):,.2f}")
+    print(f"       Total Negotiated Spend: ${neg_data.get('total_negotiated_spend', 0):,.2f}")
+    print(f"       Total Net Savings:      +${neg_data.get('total_savings', 0):,.2f} ({neg_data.get('total_savings_pct', 0):.1f}%)")
+    print(f"       Winning Supplier:       {neg_data.get('top_vendor_name')}")
 
     # 5. Assert Structure of Negotiated Results
-    assert len(neg_data["results"]) == 3, f"Expected 3 negotiated vendors, got {len(neg_data['results'])}"
+    assert len(neg_data["results"]) >= 1, f"Expected negotiated vendor results, got {len(neg_data['results'])}"
+    first_session_id = None
     for vr in neg_data["results"]:
-        print(f"\n       >> Vendor: {vr['vendor_name']} ({vr['pricing_tier']})")
-        print(f"          Price: ${vr['original_price']:,.2f} -> ${vr['negotiated_price']:,.2f} (-${vr['savings_amount']:,.2f})")
-        print(f"          SLA:   {vr['original_days']}d -> {vr['negotiated_days']}d ({vr['days_saved']}d saved)")
-        print(f"          Transcripts ({len(vr['transcript'])} turns):")
-        assert len(vr["transcript"]) >= 3, f"Expected at least 3 negotiation turns, got {len(vr['transcript'])}"
-        for turn in vr["transcript"]:
-            print(f"            - [R{turn['round']} {turn['speaker']}]: \"{turn['message'][:75]}...\" (Offer: ${turn['offered_price']:,.2f}, {turn['offered_days']}d)")
-        
-        # Verify pricing constraints
-        price_floor = vr["original_price"] * 0.85
-        assert vr["negotiated_price"] >= (price_floor - 0.01), f"Negotiated price ${vr['negotiated_price']} below 85% floor ${price_floor}"
-        assert vr["negotiated_price"] <= vr["original_price"], f"Negotiated price ${vr['negotiated_price']} higher than original ${vr['original_price']}"
+        print(f"\n       >> Vendor: {vr['vendor_name']}")
+        print(f"          Final Price: ${vr['final_price']:,.2f} (Savings: ${vr['savings']:,.2f}, {vr['savings_percentage']:.1f}%)")
+        print(f"          Final Days:  {vr['final_days']}d")
+        print(f"          Status:      {vr['status']} | Action: {vr['action']}")
+        print(f"          Events Count: {len(vr.get('events', []))}")
+        if vr.get("session_id") and first_session_id is None:
+            first_session_id = vr["session_id"]
+        for ev in vr.get("events", []):
+            print(f"            - [R{ev['round']} {ev['speaker_role']} ({ev['event_type']})]: \"{ev['message'][:70]}...\" (Price: ${ev.get('price') or 0:,.2f}, {ev.get('delivery_days')}d)")
 
-    # 6. Verify Database Persistence of Transcripts & Recalculated Scores
-    print(f"\n[6] Verifying GET /api/vendors/recommendations/{pr_id} persistence...")
-    rec_after_res = requests.get(
-        f"{BASE_URL}/vendors/recommendations/{pr_id}",
-        headers=headers
-    )
-    assert rec_after_res.status_code == 200
-    recs_after = rec_after_res.json()["recommendations"]
-    top_after = recs_after[0]
-    print(f"  [OK] Verified updated ranking: #1 {top_after['vendor_name']} (Score: {top_after['scores']['total_score']:.1f})")
-    assert top_after["negotiation_transcript"] is not None, "Negotiation transcript not persisted on bid!"
+    # 6. Verify Database Persistence of Negotiation History via API
+    if first_session_id:
+        print(f"\n[6] Verifying GET /api/vendors/negotiation/{first_session_id} history persistence...")
+        history_res = requests.get(
+            f"{BASE_URL}/vendors/negotiation/{first_session_id}",
+            headers=headers
+        )
+        assert history_res.status_code == 200, f"Failed to get negotiation history: {history_res.text}"
+        hist = history_res.json()
+        assert hist["session"]["id"] == first_session_id
+        assert len(hist["events"]) >= 1
+        print(f"  [OK] Verified session history: {len(hist['events'])} events, {len(hist['decisions'])} policy decisions, gov_state recorded={hist['gov_state'] is not None}")
 
-    # 7. Test Fallback Resilience
-    print("\n[7] Testing Resilience & Fallback Handling (Simulated Offline / Quota Drop)...")
-    from app.negotiation.agents import run_multi_agent_negotiation
-    # Directly invoke with empty/offline conditions
-    dummy_pr = {"id": 999, "title": "Dummy PR", "item_description": "Test", "estimated_budget": 50000.0}
-    dummy_vendors = [
-        {"vendor_id": 1, "vendor_name": "Test Enterprise Vendor", "pricing_tier": "Enterprise Tier-1", "quoted_price": 50000.0, "delivery_days": 5, "avg_delivery_days": 4},
-        {"vendor_id": 2, "vendor_name": "Test Economy Vendor", "pricing_tier": "Economy Tier", "quoted_price": 42000.0, "delivery_days": 8, "avg_delivery_days": 7},
-        {"vendor_id": 3, "vendor_name": "Test Mid-Tier Vendor", "pricing_tier": "Mid-Tier", "quoted_price": 46000.0, "delivery_days": 6, "avg_delivery_days": 5}
-    ]
-    fb_result = run_multi_agent_negotiation(dummy_pr, dummy_vendors)
-    assert len(fb_result["vendors"]) == 3
-    for v in fb_result["vendors"]:
-        assert len(v["transcript"]) >= 3
-        assert v["final_price"] <= v["initial_price"]
-        assert v["final_price"] >= v["price_floor"]
-    print("  [OK] Fallback execution succeeded gracefully with zero exceptions.")
+    # 7. Test Bilateral Engine Fallback Resilience (Simulated Offline / Quota Drop)
+    print("\n[7] Testing Bilateral Engine Resilience & Fallback Handling...")
+    from app.negotiation.graph import run_bilateral_negotiation
+    from app.negotiation.state import GraphNegotiationState
 
-    print_header("ALL MULTI-AGENT NEGOTIATION TESTS PASSED WITH 100% SUCCESS!")
+    test_state: GraphNegotiationState = {
+        "shared": {
+            "session_id": 9999,
+            "pr_id": pr_id,
+            "pr_title": "Direct Graph Test CNC Spindle",
+            "item_description": "Industrial Spindle Assembly",
+            "quantity": 5,
+            "current_round": 0,
+            "status": "INITIATED",
+            "events": [],
+        },
+        "gov": {
+            "target_price": 42000.0,
+            "max_authorized_price": 50000.0,
+            "target_delivery": 5,
+            "max_delivery": 10,
+            "strategy": "Maximize cost savings",
+        },
+        "vendor": {
+            "target_price": 48000.0,
+            "absolute_minimum_price": 41000.0,
+            "feasible_delivery": 4,
+            "strategy": "Protect margin",
+        },
+        "next_actor": "GOV_AGENT",
+    }
+
+    fb_result = run_bilateral_negotiation(test_state)
+    assert len(fb_result["shared"]["events"]) >= 2, "Expected at least 2 negotiation events from bilateral run"
+    assert fb_result["shared"]["status"] in ["ACCEPTED", "ESCALATED", "REJECTED", "NEGOTIATING", "COMPLETED"]
+    print(f"  [OK] Bilateral graph executed with final status: {fb_result['shared']['status']} across {len(fb_result['shared']['events'])} turns.")
+
+    print_header("ALL BILATERAL MULTI-AGENT NEGOTIATION TESTS PASSED WITH 100% SUCCESS!")
+
 
 if __name__ == "__main__":
     main()

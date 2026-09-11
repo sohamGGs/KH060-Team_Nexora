@@ -4,10 +4,10 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
 
 from app.database import get_db
-from app import models, schemas, auth, ai_service
-from app.routers.vendors import compute_vendor_score
+from app import auth, models, schemas, auth, ai_service
+from app.routers.government.vendors import compute_vendor_score
 
-router = APIRouter(prefix="/dashboard", tags=["Dashboard & AI Analytics"])
+router = APIRouter(dependencies=[Depends(auth.require_gov_role)], prefix="/dashboard", tags=["Dashboard & AI Analytics"])
 
 
 @router.get("/metrics", response_model=schemas.DashboardMetrics)

@@ -6,12 +6,12 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
 from app.database import get_db
-from app import models, schemas, auth
-from app.routers.approvals import evaluate_routing_rule
-from app.routers.vendors import compute_vendor_score
+from app import auth, models, schemas, auth
+from app.routers.government.approvals import evaluate_routing_rule
+from app.routers.government.vendors import compute_vendor_score
 from app.compliance.compliance_service import evaluate_compliance
 
-router = APIRouter(prefix="/purchase-requests", tags=["Purchase Requests"])
+router = APIRouter(dependencies=[Depends(auth.require_gov_role)], prefix="/purchase-requests", tags=["Purchase Requests"])
 
 
 def parse_compliance_out(check: Optional[models.ComplianceCheck]) -> Optional[schemas.ComplianceCheckOut]:

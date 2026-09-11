@@ -12,9 +12,9 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
 
 from app.database import get_db
-from app import models, schemas, auth
+from app import auth, models, schemas, auth
 
-router = APIRouter(prefix="/approvals", tags=["Approvals & Purchase Orders"])
+router = APIRouter(dependencies=[Depends(auth.require_gov_role)], prefix="/approvals", tags=["Approvals & Purchase Orders"])
 
 GENERATED_POS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "generated_pos")
 os.makedirs(GENERATED_POS_DIR, exist_ok=True)
