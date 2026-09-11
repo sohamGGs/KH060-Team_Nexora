@@ -24,7 +24,8 @@ import {
   ShieldAlert,
   SlidersHorizontal,
   User,
-  Building
+  Building,
+  X
 } from 'lucide-react';
 import { prAPI, vendorAPI, dashboardAPI, approvalsAPI } from '../api';
 
@@ -177,7 +178,58 @@ export default function VendorComparison({
 
     try {
       const data = await vendorAPI.negotiate(activePrId);
-      setNegotiationData(data);
+
+      // Build recommendation lookup map to enrich vendor results with metadata if needed
+      const recList = Array.isArray(data.recommendations) ? data.recommendations : (recommendations || []);
+      const recMap = new Map(recList.map((r) => [r.vendor_id, r]));
+
+      const normalizedResults = Array.isArray(data.results)
+        ? data.results.map((vr) => {
+            const rec = recMap.get(vr.vendor_id);
+            const origPrice = vr.original_price ?? (rec?.original_quoted_price ?? rec?.quoted_price ?? (vr.final_price !== undefined && vr.savings !== undefined ? vr.final_price + vr.savings : 0));
+            const negPrice = vr.negotiated_price ?? vr.final_price ?? rec?.quoted_price ?? origPrice;
+            const origDays = vr.original_days ?? (rec?.original_delivery_days ?? rec?.delivery_days ?? vr.final_days ?? 0);
+            const negDays = vr.negotiated_days ?? vr.final_days ?? rec?.delivery_days ?? origDays;
+            const savingsAmt = vr.savings_amount ?? vr.savings ?? Math.max(0, origPrice - negPrice);
+            const savingsPct = vr.savings_pct ?? vr.savings_percentage ?? (origPrice > 0 ? (savingsAmt / origPrice) * 100 : 0);
+
+            // Extract transcript from vr.transcript or vr.events
+            const rawEvents = Array.isArray(vr.transcript) ? vr.transcript : (Array.isArray(vr.events) ? vr.events : []);
+            const normalizedTranscript = rawEvents.map((turn) => ({
+              id: turn.id,
+              round: turn.round ?? 0,
+              speaker_role: turn.speaker_role ?? 'agent',
+              message: turn.message || '',
+              offered_price: turn.offered_price ?? turn.price ?? negPrice,
+              offered_days: turn.offered_days ?? turn.delivery_days ?? negDays
+            }));
+
+            return {
+              ...vr,
+              vendor_id: vr.vendor_id,
+              vendor_name: vr.vendor_name,
+              pricing_tier: vr.pricing_tier || rec?.pricing_tier || 'Standard',
+              original_price: origPrice,
+              negotiated_price: negPrice,
+              original_days: origDays,
+              negotiated_days: negDays,
+              savings_amount: savingsAmt,
+              savings_pct: savingsPct,
+              days_saved: vr.days_saved ?? Math.max(0, origDays - negDays),
+              status: vr.status || 'completed',
+              transcript: normalizedTranscript,
+              events: rawEvents,
+              updated_score: vr.updated_score ?? rec?.scores?.total_score ?? rec?.bid_score ?? 95.0
+            };
+          })
+        : [];
+
+      const normalizedData = {
+        ...data,
+        results: normalizedResults
+      };
+
+      setNegotiationData(normalizedData);
       if (Array.isArray(data.recommendations)) {
         setRecommendations(data.recommendations);
       }
@@ -288,6 +340,23 @@ export default function VendorComparison({
         </div>
       </div>
 
+      {/* Error Alert Display */}
+      {error && (
+        <div className="p-3.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center justify-between shadow-sm animate-fade-in">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+            <span className="font-medium">{error}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setError('')}
+            className="text-rose-500 hover:text-rose-700 p-1 rounded"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* PR Summary Bar */}
       {prDetail && (
         <div className="enterprise-card p-4 flex flex-wrap items-center justify-between gap-4">
@@ -396,13 +465,14 @@ export default function VendorComparison({
                 </p>
               </div>
             </div>
-          ) : negotiationData && (
+          ) : (negotiationData && Array.isArray(negotiationData.results)) && (
             <div className="space-y-4">
               {/* 3-Column Messenger Grid */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 {negotiationData.results.map((vr) => {
-                  const hasSavings = vr.savings_amount > 0;
+                  const hasSavings = (vr.savings_amount ?? vr.savings ?? 0) > 0;
                   const isHeld = vr.status === 'held';
+                  const transcript = Array.isArray(vr.transcript) ? vr.transcript : (Array.isArray(vr.events) ? vr.events : []);
 
                   return (
                     <div
@@ -413,7 +483,7 @@ export default function VendorComparison({
                       <div className="p-3.5 bg-[#f5f4f0] border-b border-[#e8e6df] space-y-1.5">
                         <div className="flex items-center justify-between">
                           <span className={`text-[9px] font-medium px-1.5 py-0.2 rounded border ${getTierBadge(vr.pricing_tier)}`}>
-                            {vr.pricing_tier}
+                            {vr.pricing_tier || 'Standard'}
                           </span>
                           {isHeld ? (
                             <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#f3f2ec] text-slate-600 border border-[#e8e6df]">
@@ -421,7 +491,7 @@ export default function VendorComparison({
                             </span>
                           ) : hasSavings ? (
                             <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono">
-                              -${(vr.savings_amount || 0).toLocaleString()} ({Number(vr.savings_pct || 0).toFixed(1)}%)
+                              -${Number(vr.savings_amount ?? vr.savings ?? 0).toLocaleString()} ({Number(vr.savings_pct ?? vr.savings_percentage ?? 0).toFixed(1)}%)
                             </span>
                           ) : (
                             <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#f3f2ec] text-slate-600 border border-[#e8e6df]">
@@ -434,15 +504,15 @@ export default function VendorComparison({
                           <h4 className="text-xs font-bold text-slate-900 truncate">{vr.vendor_name}</h4>
                           <div className="flex items-center justify-between text-xs pt-0.5 font-mono">
                             <span className="text-slate-500 text-[11px]">
-                              Init: <span className="line-through">${(vr.original_price ?? vr.quoted_price ?? 0).toLocaleString()}</span>
+                              Init: <span className="line-through">${Number(vr.original_price ?? vr.quoted_price ?? 0).toLocaleString()}</span>
                             </span>
                             <span className="text-emerald-700 font-semibold text-xs">
-                              Final: ${(vr.negotiated_price ?? vr.quoted_price ?? 0).toLocaleString()}
+                              Final: ${Number(vr.negotiated_price ?? vr.final_price ?? vr.quoted_price ?? 0).toLocaleString()}
                             </span>
                           </div>
                           <div className="flex items-center justify-between text-[10px] text-slate-500 pt-0.5">
-                            <span>SLA: {vr.original_days}d → <strong className="text-slate-800">{vr.negotiated_days}d</strong></span>
-                            {vr.days_saved > 0 && (
+                            <span>SLA: {vr.original_days ?? vr.final_days ?? 0}d &rarr; <strong className="text-slate-800">{vr.negotiated_days ?? vr.final_days ?? 0}d</strong></span>
+                            {(vr.days_saved ?? 0) > 0 && (
                               <span className="text-blue-600">({vr.days_saved}d faster)</span>
                             )}
                           </div>
@@ -451,41 +521,49 @@ export default function VendorComparison({
 
                       {/* Chat Messages Container */}
                       <div className="p-3 space-y-2.5 flex-1 overflow-y-auto max-h-[340px] text-xs bg-[#f5f4f0]/50">
-                        {vr.transcript.map((turn, tIdx) => {
-                          const isBuyer = turn.speaker_role === 'buyer';
+                        {transcript.length === 0 ? (
+                          <div className="p-4 text-center text-slate-400 text-xs italic">
+                            No negotiation transcript events recorded.
+                          </div>
+                        ) : (
+                          transcript.map((turn, tIdx) => {
+                            const isBuyer = turn.speaker_role === 'buyer' || turn.speaker_role === 'GOV_AGENT' || turn.speaker_role === 'GOVERNMENT';
+                            const offerPrice = turn.offered_price ?? turn.price ?? 0;
+                            const offerDays = turn.offered_days ?? turn.delivery_days ?? 0;
 
-                          return (
-                            <div
-                              key={tIdx}
-                              className={`flex flex-col space-y-1 ${isBuyer ? 'items-start' : 'items-end'}`}
-                            >
-                              <div className="text-[9px] text-slate-500 px-0.5 font-medium">
-                                {isBuyer ? `BuyerAgent • Round ${turn.round}` : `${vr.vendor_name?.split(' ')[0]} Sales • Round ${turn.round}`}
-                              </div>
-
+                            return (
                               <div
-                                className={`p-2.5 rounded-lg max-w-[92%] space-y-1.5 leading-relaxed text-[11px] shadow-sm ${
-                                  isBuyer
-                                    ? 'bg-blue-50 border border-blue-200 text-slate-800'
-                                    : 'bg-[#fbfbfa] border border-[#e8e6df] text-slate-800'
-                                }`}
+                                key={turn.id || tIdx}
+                                className={`flex flex-col space-y-1 ${isBuyer ? 'items-start' : 'items-end'}`}
                               >
-                                <p>{turn.message}</p>
-                                <div className="flex items-center gap-2 pt-1 border-t border-[#e8e6df] text-[10px] font-mono text-slate-500">
-                                  <span>Offer: <strong className="text-slate-900">${(turn.offered_price || 0).toLocaleString()}</strong></span>
-                                  <span>•</span>
-                                  <span>SLA: <strong className="text-slate-900">{turn.offered_days}d</strong></span>
+                                <div className="text-[9px] text-slate-500 px-0.5 font-medium">
+                                  {isBuyer ? `Buyer Agent • Round ${turn.round ?? 0}` : `${vr.vendor_name?.split(' ')[0] || 'Vendor'} Sales • Round ${turn.round ?? 0}`}
+                                </div>
+
+                                <div
+                                  className={`p-2.5 rounded-lg max-w-[92%] space-y-1.5 leading-relaxed text-[11px] shadow-sm ${
+                                    isBuyer
+                                      ? 'bg-blue-50 border border-blue-200 text-slate-800'
+                                      : 'bg-[#fbfbfa] border border-[#e8e6df] text-slate-800'
+                                  }`}
+                                >
+                                  <p>{turn.message}</p>
+                                  <div className="flex items-center gap-2 pt-1 border-t border-[#e8e6df] text-[10px] font-mono text-slate-500">
+                                    <span>Offer: <strong className="text-slate-900">${Number(offerPrice).toLocaleString()}</strong></span>
+                                    <span>•</span>
+                                    <span>SLA: <strong className="text-slate-900">{offerDays}d</strong></span>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          );
-                        })}
+                            );
+                          })
+                        )}
                       </div>
 
                       {/* Footer Action */}
                       <div className="p-2.5 bg-[#f5f4f0] border-t border-[#e8e6df] flex items-center justify-between">
                         <span className="text-[10px] text-slate-600">
-                          Score: <strong className="text-emerald-700 font-mono">{Number(vr.updated_score || 0).toFixed(1) || '95.0'}/100</strong>
+                          Score: <strong className="text-emerald-700 font-mono">{Number(vr.updated_score ?? 95.0).toFixed(1)}/100</strong>
                         </span>
                         <button
                           type="button"
