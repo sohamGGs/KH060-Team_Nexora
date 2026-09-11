@@ -23,6 +23,7 @@ from app.models import (
 from app.negotiation.graph import run_bilateral_negotiation
 from app.negotiation.state import GraphNegotiationState
 from app.schemas import (
+    NegotiationCounterRequest,
     NegotiationEscalationAction,
     NegotiationEventOut,
     NegotiationHistoryResponse,
@@ -399,8 +400,11 @@ def run_autonomous_negotiation_endpoint(
         if raw_status in ["ACCEPTED", "ACCEPT"]:
             final_status = "ACCEPTED"
             action = "ACCEPT"
-        elif raw_status in ["ESCALATED", "ESCALATE"]:
-            final_status = "PENDING_APPROVAL"
+        elif raw_status in ["PENDING_GOV_APPROVAL", "ESCALATED", "ESCALATE"]:
+            final_status = "PENDING_GOV_APPROVAL"
+            action = "ESCALATE"
+        elif raw_status == "PENDING_VENDOR_APPROVAL":
+            final_status = "PENDING_VENDOR_APPROVAL"
             action = "ESCALATE"
         elif raw_status in ["REJECTED", "REJECT"]:
             final_status = "REJECTED"
@@ -414,15 +418,18 @@ def run_autonomous_negotiation_endpoint(
         session.current_price = last_price
         session.current_delivery_days = last_days
 
+        esc_role = "VENDOR" if final_status == "PENDING_VENDOR_APPROVAL" else "GOVERNMENT"
+        rule_desc = "VENDOR_MIN_PRICE_FLOOR" if final_status == "PENDING_VENDOR_APPROVAL" else "GOV_MAX_PRICE_CEILING"
+
         policy_decision = PolicyDecision(
             negotiation_session_id=session.id,
-            role="GOVERNMENT",
+            role=esc_role if action == "ESCALATE" else "GOVERNMENT",
             round=session.current_round,
             evaluated_price=last_price,
             evaluated_delivery_days=last_days,
             decision=action,
-            rule_triggered=f"Bilateral policy outcome: {final_status}",
-            threshold_value=str(gov_max),
+            rule_triggered=f"{rule_desc if action == 'ESCALATE' else 'Bilateral policy outcome'}: {final_status}",
+            threshold_value=str(gov_max if esc_role == 'GOVERNMENT' else vendor_floor),
             actual_value=str(last_price),
         )
         db.add(policy_decision)
@@ -431,10 +438,15 @@ def run_autonomous_negotiation_endpoint(
         if action == "ESCALATE":
             any_escalated = True
             all_completed = False
+            esc_reason = (
+                f"Government proposal of ${last_price:,.2f} ({last_days} days) crosses vendor commercial authorization boundary."
+                if final_status == "PENDING_VENDOR_APPROVAL"
+                else f"Vendor proposal of ${last_price:,.2f} ({last_days} days) exceeds government procurement ceiling."
+            )
             escalation = NegotiationEscalation(
                 negotiation_session_id=session.id,
-                role="GOVERNMENT",
-                reason=f"Negotiation proposal of ${last_price:,.2f} requires management escalation.",
+                role=esc_role,
+                reason=esc_reason,
                 requested_price=last_price,
                 requested_delivery_days=last_days,
                 status="PENDING",
@@ -601,19 +613,77 @@ def action_negotiation_escalation(
 
     escalation = (
         db.query(NegotiationEscalation)
-        .filter(NegotiationEscalation.negotiation_session_id == session_id)
+        .filter(
+            NegotiationEscalation.negotiation_session_id == session_id,
+            NegotiationEscalation.role == "GOVERNMENT",
+        )
         .order_by(NegotiationEscalation.id.desc())
         .first()
     )
+    if not escalation:
+        escalation = (
+            db.query(NegotiationEscalation)
+            .filter(NegotiationEscalation.negotiation_session_id == session_id)
+            .order_by(NegotiationEscalation.id.desc())
+            .first()
+        )
     if not escalation:
         raise HTTPException(status_code=404, detail="No escalation found for this session")
 
     if action.decision == "APPROVE":
         escalation.status = "APPROVED"
         session.status = "RESUMED"
+
+        # Modify Gov private authorization / ceiling
+        gov_state = (
+            db.query(GovNegotiationState)
+            .filter(GovNegotiationState.negotiation_session_id == session.id)
+            .first()
+        )
+        if gov_state:
+            if escalation.requested_price and escalation.requested_price > gov_state.max_authorized_price:
+                gov_state.max_authorized_price = float(escalation.requested_price)
+            if escalation.requested_delivery_days and escalation.requested_delivery_days > gov_state.max_delivery:
+                gov_state.max_delivery = int(escalation.requested_delivery_days)
+
+        # Audit Event 1: HUMAN_GOV_APPROVAL
+        db.add(
+            NegotiationEvent(
+                negotiation_session_id=session.id,
+                round=session.current_round,
+                speaker_role="GOV_HUMAN",
+                event_type="HUMAN_GOV_APPROVAL",
+                price=escalation.requested_price,
+                delivery_days=escalation.requested_delivery_days,
+                message=action.comment or "Government procurement authority approved escalation.",
+            )
+        )
+        # Audit Event 2: HUMAN_OVERRIDE
+        db.add(
+            NegotiationEvent(
+                negotiation_session_id=session.id,
+                round=session.current_round,
+                speaker_role="GOV_HUMAN",
+                event_type="HUMAN_OVERRIDE",
+                price=escalation.requested_price,
+                delivery_days=escalation.requested_delivery_days,
+                message=f"Government authority ceiling override applied for session #{session.id}.",
+            )
+        )
     else:
         escalation.status = "REJECTED"
         session.status = "REJECTED"
+        db.add(
+            NegotiationEvent(
+                negotiation_session_id=session.id,
+                round=session.current_round,
+                speaker_role="GOV_HUMAN",
+                event_type="HUMAN_REJECTION",
+                price=session.current_price,
+                delivery_days=session.current_delivery_days,
+                message=action.comment or "Proposal rejected by government procurement authority.",
+            )
+        )
 
     escalation.comment = action.comment
     escalation.actioned_at = datetime.utcnow()
@@ -625,6 +695,277 @@ def action_negotiation_escalation(
         "status": escalation.status,
         "message": f"Negotiation escalation {action.decision.lower()}ed",
     }
+
+
+@router.post(
+    "/negotiation/{session_id}/counter",
+    response_model=NegotiationResponse,
+)
+def counter_negotiation_endpoint(
+    session_id: int,
+    body: NegotiationCounterRequest,
+    db: Session = Depends(get_db),
+):
+    session = (
+        db.query(NegotiationSession)
+        .filter(NegotiationSession.id == session_id)
+        .first()
+    )
+    if not session:
+        raise HTTPException(status_code=404, detail="Negotiation session not found")
+
+    bid = db.query(VendorBid).filter(VendorBid.id == session.vendor_bid_id).first()
+    pr = db.query(PurchaseRequest).filter(PurchaseRequest.id == bid.pr_id).first()
+    vendor = db.query(Vendor).filter(Vendor.id == bid.vendor_id).first()
+
+    gov_state_rec = (
+        db.query(GovNegotiationState)
+        .filter(GovNegotiationState.negotiation_session_id == session.id)
+        .first()
+    )
+    vendor_state_rec = (
+        db.query(VendorNegotiationState)
+        .filter(VendorNegotiationState.negotiation_session_id == session.id)
+        .first()
+    )
+
+    # 1. Action any pending government escalation
+    pending_esc = (
+        db.query(NegotiationEscalation)
+        .filter(
+            NegotiationEscalation.negotiation_session_id == session_id,
+            NegotiationEscalation.role == "GOVERNMENT",
+            NegotiationEscalation.status == "PENDING",
+        )
+        .first()
+    )
+    if pending_esc:
+        pending_esc.status = "APPROVED"
+        pending_esc.comment = f"Resolved via manual government counteroffer: ${body.price:,.2f}"
+        pending_esc.actioned_at = datetime.utcnow()
+
+    # 2. Adjust Government private ceiling if counteroffer exceeds current ceiling (override)
+    if gov_state_rec and body.price > gov_state_rec.max_authorized_price:
+        gov_state_rec.max_authorized_price = float(body.price)
+        db.add(
+            NegotiationEvent(
+                negotiation_session_id=session.id,
+                round=session.current_round,
+                speaker_role="GOV_HUMAN",
+                event_type="HUMAN_OVERRIDE",
+                price=body.price,
+                delivery_days=body.delivery_days,
+                message="Government authority budget ceiling updated to accommodate manual counteroffer.",
+            )
+        )
+
+    # 3. Record HUMAN_GOV_COUNTER event
+    human_event = NegotiationEvent(
+        negotiation_session_id=session.id,
+        round=session.current_round,
+        speaker_role="GOV_HUMAN",
+        event_type="HUMAN_GOV_COUNTER",
+        price=float(body.price),
+        delivery_days=int(body.delivery_days),
+        message=body.message or f"Government human authority counteroffer: ${body.price:,.2f} ({body.delivery_days} days).",
+    )
+    db.add(human_event)
+    session.current_price = float(body.price)
+    session.current_delivery_days = int(body.delivery_days)
+    session.status = "NEGOTIATING"
+    db.flush()
+
+    # 4. Reconstruct history for bilateral continuation
+    existing_events = (
+        db.query(NegotiationEvent)
+        .filter(NegotiationEvent.negotiation_session_id == session.id)
+        .order_by(NegotiationEvent.round.asc(), NegotiationEvent.id.asc())
+        .all()
+    )
+    events_list = [
+        {
+            "round": e.round,
+            "speaker_role": e.speaker_role,
+            "event_type": e.event_type,
+            "price": e.price,
+            "delivery_days": e.delivery_days,
+            "message": e.message,
+        }
+        for e in existing_events
+    ]
+
+    initial_state: GraphNegotiationState = {
+        "shared": {
+            "session_id": session.id,
+            "pr_id": pr.id,
+            "pr_title": pr.title,
+            "item_description": pr.item_description or "",
+            "quantity": pr.quantity,
+            "current_round": session.current_round,
+            "status": "NEGOTIATING",
+            "events": events_list,
+        },
+        "gov": {
+            "target_price": gov_state_rec.target_price if gov_state_rec else float(body.price),
+            "max_authorized_price": gov_state_rec.max_authorized_price if gov_state_rec else float(body.price),
+            "target_delivery": gov_state_rec.target_delivery if gov_state_rec else int(body.delivery_days),
+            "max_delivery": gov_state_rec.max_delivery if gov_state_rec else int(body.delivery_days) + 5,
+            "strategy": "Human counteroffer submitted. Conclude agreement.",
+        },
+        "vendor": {
+            "target_price": vendor_state_rec.target_price if vendor_state_rec else float(bid.quoted_price),
+            "absolute_minimum_price": vendor_state_rec.absolute_minimum_price if vendor_state_rec else float(bid.quoted_price) * 0.80,
+            "feasible_delivery": vendor_state_rec.feasible_delivery if vendor_state_rec else int(bid.delivery_days),
+            "strategy": vendor_state_rec.strategy if vendor_state_rec else "Protect margin and feasible delivery.",
+        },
+        "next_actor": "VENDOR_AGENT",  # Government human countered -> Vendor Agent responds!
+    }
+
+    final_state = run_bilateral_negotiation(initial_state)
+
+    # Save newly generated events
+    event_outs: List[NegotiationEventOut] = []
+    last_price = float(body.price)
+    last_days = int(body.delivery_days)
+
+    new_events = final_state["shared"]["events"][len(existing_events):]
+    for ev in new_events:
+        ev_price = ev.get("price")
+        ev_days = ev.get("delivery_days")
+        if ev_price is not None:
+            last_price = float(ev_price)
+        if ev_days is not None:
+            last_days = int(ev_days)
+
+        event_rec = NegotiationEvent(
+            negotiation_session_id=session.id,
+            round=int(ev.get("round", session.current_round)),
+            speaker_role=str(ev.get("speaker_role", "SYSTEM")),
+            event_type=str(ev.get("event_type", "OFFER")),
+            price=float(ev_price) if ev_price is not None else None,
+            delivery_days=int(ev_days) if ev_days is not None else None,
+            message=str(ev.get("message", "")),
+        )
+        db.add(event_rec)
+        db.flush()
+
+    raw_status = final_state["shared"].get("status", "NEGOTIATING")
+    if raw_status in ["ACCEPTED", "ACCEPT"]:
+        final_status = "ACCEPTED"
+        action = "ACCEPT"
+        bid.quoted_price = last_price
+        bid.delivery_days = last_days
+        bid.bid_score = calculate_bid_score(bid, vendor, pr.estimated_budget)
+    elif raw_status == "PENDING_VENDOR_APPROVAL":
+        final_status = "PENDING_VENDOR_APPROVAL"
+        action = "ESCALATE"
+        db.add(
+            NegotiationEscalation(
+                negotiation_session_id=session.id,
+                role="VENDOR",
+                reason=f"Government human counteroffer of ${last_price:,.2f} ({last_days} days) crosses vendor commercial limits.",
+                requested_price=last_price,
+                requested_delivery_days=last_days,
+                status="PENDING",
+            )
+        )
+    elif raw_status in ["PENDING_GOV_APPROVAL", "ESCALATED", "ESCALATE"]:
+        final_status = "PENDING_GOV_APPROVAL"
+        action = "ESCALATE"
+        db.add(
+            NegotiationEscalation(
+                negotiation_session_id=session.id,
+                role="GOVERNMENT",
+                reason=f"Counter-response of ${last_price:,.2f} ({last_days} days) exceeds authorized budget ceiling.",
+                requested_price=last_price,
+                requested_delivery_days=last_days,
+                status="PENDING",
+            )
+        )
+    elif raw_status in ["REJECTED", "REJECT"]:
+        final_status = "REJECTED"
+        action = "REJECT"
+    else:
+        final_status = "NEGOTIATING"
+        action = "CONTINUE"
+
+    session.status = final_status
+    session.current_round = final_state["shared"].get("current_round", session.current_round)
+    session.current_price = last_price
+    session.current_delivery_days = last_days
+
+    db.add(
+        PolicyDecision(
+            negotiation_session_id=session.id,
+            role="GOVERNMENT",
+            round=session.current_round,
+            evaluated_price=last_price,
+            evaluated_delivery_days=last_days,
+            decision=action,
+            rule_triggered=f"Government manual counter outcome: {final_status}",
+            threshold_value=str(gov_state_rec.max_authorized_price if gov_state_rec else last_price),
+            actual_value=str(last_price),
+        )
+    )
+    db.commit()
+
+    all_events = (
+        db.query(NegotiationEvent)
+        .filter(NegotiationEvent.negotiation_session_id == session.id)
+        .order_by(NegotiationEvent.round.asc(), NegotiationEvent.id.asc())
+        .all()
+    )
+    for e in all_events:
+        event_outs.append(
+            NegotiationEventOut(
+                id=e.id,
+                round=e.round,
+                speaker_role=e.speaker_role,
+                event_type=e.event_type,
+                price=e.price,
+                delivery_days=e.delivery_days,
+                message=e.message,
+                created_at=e.created_at,
+            )
+        )
+
+    initial_p = float(bid.original_quoted_price or bid.quoted_price)
+    savings = max(0.0, initial_p - float(last_price))
+    savings_pct = (savings / initial_p * 100.0) if initial_p > 0 else 0.0
+
+    result_out = VendorNegotiationResultOut(
+        vendor_id=vendor.id,
+        vendor_name=vendor.name,
+        final_price=round(last_price, 2),
+        final_days=int(last_days),
+        savings=round(savings, 2),
+        savings_percentage=round(savings_pct, 2),
+        status=session.status,
+        action=action,
+        is_fallback=False,
+        events=event_outs,
+        session_id=session.id,
+        escalation_id=None,
+    )
+
+    fresh_recs = build_recommendations(db, pr)
+
+    return NegotiationResponse(
+        pr_id=pr.id,
+        pr_title=pr.title,
+        estimated_budget=pr.estimated_budget,
+        total_initial_spend=round(initial_p, 2),
+        total_negotiated_spend=round(last_price, 2),
+        total_savings=round(savings, 2),
+        total_savings_pct=round(savings_pct, 2),
+        top_vendor_id=vendor.id,
+        top_vendor_name=vendor.name,
+        results=[result_out],
+        recommendations=fresh_recs,
+        completed=final_status == "ACCEPTED",
+        escalated=final_status in ["PENDING_GOV_APPROVAL", "PENDING_VENDOR_APPROVAL", "PENDING_APPROVAL"],
+        sessions=[session],
+    )
 
 
 @router.post(
@@ -693,6 +1034,32 @@ def resume_negotiation_endpoint(
         for e in existing_events
     ]
 
+    # Audit event for resume
+    db.add(
+        NegotiationEvent(
+            negotiation_session_id=session.id,
+            round=session.current_round,
+            speaker_role="SYSTEM",
+            event_type="NEGOTIATION_RESUMED",
+            price=session.current_price,
+            delivery_days=session.current_delivery_days,
+            message="Negotiation resumed following supervisory approval.",
+        )
+    )
+    db.flush()
+
+    # Determine next actor from last commercial proposal speaker
+    last_proposal = None
+    for ev in reversed(existing_events):
+        if ev.event_type in ["OFFER", "COUNTER", "AGENT_OFFER", "AGENT_COUNTER", "HUMAN_GOV_COUNTER", "HUMAN_VENDOR_COUNTER"]:
+            last_proposal = ev
+            break
+
+    if last_proposal and ("VENDOR" in last_proposal.speaker_role):
+        next_actor = "GOV_AGENT"
+    else:
+        next_actor = "VENDOR_AGENT"
+
     initial_state: GraphNegotiationState = {
         "shared": {
             "session_id": session.id,
@@ -700,13 +1067,13 @@ def resume_negotiation_endpoint(
             "pr_title": pr.title,
             "item_description": pr.item_description or "",
             "quantity": pr.quantity,
-            "current_round": session.current_round + 1,
+            "current_round": session.current_round,
             "status": "RESUMED",
             "events": events_list,
         },
         "gov": {
             "target_price": gov_state_rec.target_price if gov_state_rec else float(session.current_price),
-            "max_authorized_price": float(escalation.requested_price or pr.estimated_budget),
+            "max_authorized_price": gov_state_rec.max_authorized_price if gov_state_rec else float(escalation.requested_price or session.current_price),
             "target_delivery": gov_state_rec.target_delivery if gov_state_rec else int(session.current_delivery_days),
             "max_delivery": gov_state_rec.max_delivery if gov_state_rec else int(session.current_delivery_days) + 5,
             "strategy": "Supervisory approval granted. Conclude agreement within approved limits.",
@@ -715,9 +1082,9 @@ def resume_negotiation_endpoint(
             "target_price": vendor_state_rec.target_price if vendor_state_rec else float(session.current_price),
             "absolute_minimum_price": vendor_state_rec.absolute_minimum_price if vendor_state_rec else float(session.current_price) * 0.85,
             "feasible_delivery": vendor_state_rec.feasible_delivery if vendor_state_rec else int(session.current_delivery_days),
-            "strategy": "Conclude agreement reliably.",
+            "strategy": vendor_state_rec.strategy if vendor_state_rec else "Conclude agreement reliably.",
         },
-        "next_actor": "GOV_AGENT",
+        "next_actor": next_actor,
     }
 
     final_state = run_bilateral_negotiation(initial_state)
@@ -738,7 +1105,7 @@ def resume_negotiation_endpoint(
 
         event_rec = NegotiationEvent(
             negotiation_session_id=session.id,
-            round=int(ev.get("round", session.current_round + 1)),
+            round=int(ev.get("round", session.current_round)),
             speaker_role=str(ev.get("speaker_role", "SYSTEM")),
             event_type=str(ev.get("event_type", "OFFER")),
             price=float(ev_price) if ev_price is not None else None,
@@ -748,19 +1115,6 @@ def resume_negotiation_endpoint(
         db.add(event_rec)
         db.flush()
 
-        event_outs.append(
-            NegotiationEventOut(
-                id=event_rec.id,
-                round=event_rec.round,
-                speaker_role=event_rec.speaker_role,
-                event_type=event_rec.event_type,
-                price=event_rec.price,
-                delivery_days=event_rec.delivery_days,
-                message=event_rec.message,
-                created_at=event_rec.created_at,
-            )
-        )
-
     raw_status = final_state["shared"].get("status", "ACCEPTED")
     if raw_status in ["ACCEPTED", "ACCEPT"]:
         final_status = "ACCEPTED"
@@ -768,15 +1122,21 @@ def resume_negotiation_endpoint(
         bid.quoted_price = last_price
         bid.delivery_days = last_days
         bid.bid_score = calculate_bid_score(bid, vendor, pr.estimated_budget)
-    elif raw_status in ["ESCALATED", "ESCALATE"]:
-        final_status = "PENDING_APPROVAL"
+    elif raw_status == "PENDING_VENDOR_APPROVAL":
+        final_status = "PENDING_VENDOR_APPROVAL"
         action = "ESCALATE"
-    else:
+    elif raw_status in ["PENDING_GOV_APPROVAL", "ESCALATED", "ESCALATE"]:
+        final_status = "PENDING_GOV_APPROVAL"
+        action = "ESCALATE"
+    elif raw_status in ["REJECTED", "REJECT"]:
         final_status = "REJECTED"
         action = "REJECT"
+    else:
+        final_status = "NEGOTIATING"
+        action = "CONTINUE"
 
     session.status = final_status
-    session.current_round = final_state["shared"].get("current_round", session.current_round + 1)
+    session.current_round = final_state["shared"].get("current_round", session.current_round)
     session.current_price = last_price
     session.current_delivery_days = last_days
 
@@ -793,6 +1153,26 @@ def resume_negotiation_endpoint(
     )
     db.add(policy_decision)
     db.commit()
+
+    all_events = (
+        db.query(NegotiationEvent)
+        .filter(NegotiationEvent.negotiation_session_id == session.id)
+        .order_by(NegotiationEvent.round.asc(), NegotiationEvent.id.asc())
+        .all()
+    )
+    for e in all_events:
+        event_outs.append(
+            NegotiationEventOut(
+                id=e.id,
+                round=e.round,
+                speaker_role=e.speaker_role,
+                event_type=e.event_type,
+                price=e.price,
+                delivery_days=e.delivery_days,
+                message=e.message,
+                created_at=e.created_at,
+            )
+        )
 
     initial_p = float(bid.original_quoted_price or bid.quoted_price)
     savings = max(0.0, initial_p - float(last_price))
@@ -828,6 +1208,6 @@ def resume_negotiation_endpoint(
         results=[result_out],
         recommendations=fresh_recs,
         completed=final_status == "ACCEPTED",
-        escalated=final_status == "PENDING_APPROVAL",
+        escalated=final_status in ["PENDING_GOV_APPROVAL", "PENDING_VENDOR_APPROVAL", "PENDING_APPROVAL"],
         sessions=[session],
     )

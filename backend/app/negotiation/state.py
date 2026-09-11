@@ -1,11 +1,10 @@
-
-from typing import List, Literal, TypedDict, Optional
+from typing import List, Literal, TypedDict, Optional, Union
 from pydantic import BaseModel
 
-class NegotiationTurn(TypedDict):
+class NegotiationTurn(TypedDict, total=False):
     round: int
-    speaker_role: Literal["GOV_AGENT", "VENDOR_AGENT", "GOV_HUMAN", "VENDOR_HUMAN", "SYSTEM"]
-    event_type: Literal["OFFER", "MESSAGE", "ACCEPT", "REJECT", "ESCALATE"]
+    speaker_role: str  # GOV_AGENT, VENDOR_AGENT, GOV_HUMAN, VENDOR_HUMAN, HUMAN_GOV, HUMAN_VENDOR, SYSTEM, POLICY_ENGINE
+    event_type: str    # OFFER, COUNTER, ACCEPT, REJECT, ESCALATE, HUMAN_GOV_COUNTER, HUMAN_VENDOR_COUNTER, POLICY_ESCALATION, HUMAN_GOV_APPROVAL, HUMAN_VENDOR_APPROVAL, HUMAN_REJECTION, HUMAN_OVERRIDE, NEGOTIATION_RESUMED
     price: Optional[float]
     delivery_days: Optional[int]
     message: str
@@ -17,7 +16,7 @@ class SharedState(TypedDict):
     item_description: str
     quantity: int
     current_round: int
-    status: str
+    status: str  # INITIATED, NEGOTIATING, PENDING_GOV_APPROVAL, PENDING_VENDOR_APPROVAL, ACCEPTED, REJECTED, ESCALATED, RESUMED
     events: List[NegotiationTurn]
 
 class GovAgentState(TypedDict):
@@ -37,4 +36,4 @@ class GraphNegotiationState(TypedDict):
     shared: SharedState
     gov: GovAgentState
     vendor: VendorAgentState
-    next_actor: Literal["GOV_AGENT", "VENDOR_AGENT", "END"]
+    next_actor: str  # GOV_AGENT, VENDOR_AGENT, END

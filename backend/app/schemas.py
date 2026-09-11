@@ -406,6 +406,12 @@ class VendorNegotiationHistoryResponse(BaseModel):
     escalations: List[NegotiationEscalationOut] = []
 
 
+class NegotiationCounterRequest(BaseModel):
+    price: float
+    delivery_days: int
+    message: Optional[str] = None
+
+
 class NegotiationResumeRequest(BaseModel):
     price: Optional[float] = None
     delivery_days: Optional[int] = None
