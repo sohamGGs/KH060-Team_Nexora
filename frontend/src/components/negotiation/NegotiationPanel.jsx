@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   Bot,
   User,
-  Shield,
   Clock,
   DollarSign,
   Calendar,
@@ -11,19 +10,10 @@ import {
   XCircle,
   RotateCcw,
   Send,
-  Sparkles,
-  ArrowRight,
-  TrendingDown,
-  Layers,
-  MessageSquare,
-  ChevronRight,
-  Info,
   X,
   FileText,
   Scale,
   Lock,
-  ArrowDownRight,
-  ArrowUpRight,
   Activity
 } from 'lucide-react';
 import { negotiationsAPI, vendorPortalAPI } from '../../api';
@@ -52,52 +42,52 @@ export default function NegotiationPanel({
   const isGovUser = !isVendorUser;
   const sessionId = session?.id || session?.session_id;
 
-  // Render Status Badge
+  // Render Status Badge - Restrained Government ERP Style
   const renderStatusBadge = (status) => {
     switch (status?.toUpperCase()) {
       case 'COMPLETED':
       case 'ACCEPTED':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-300 shadow-sm">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> ACCEPTED
           </span>
         );
       case 'NEGOTIATING':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-300 animate-pulse shadow-sm">
-            <Activity className="w-3.5 h-3.5 text-blue-600 animate-spin" /> NEGOTIATING
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+            <Activity className="w-3.5 h-3.5 text-blue-600" /> NEGOTIATING
           </span>
         );
       case 'ESCALATED':
       case 'PENDING_GOV_APPROVAL':
       case 'PENDING_APPROVAL':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-900 border border-amber-400 shadow-sm animate-pulse">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-300">
             <AlertTriangle className="w-3.5 h-3.5 text-amber-600" /> PENDING GOV APPROVAL
           </span>
         );
       case 'PENDING_VENDOR_APPROVAL':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-purple-50 text-purple-900 border border-purple-300 shadow-sm animate-pulse">
-            <Clock className="w-3.5 h-3.5 text-purple-600" /> PENDING VENDOR APPROVAL
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-800 border border-slate-300">
+            <Clock className="w-3.5 h-3.5 text-slate-600" /> PENDING VENDOR APPROVAL
           </span>
         );
       case 'REJECTED':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-800 border border-rose-300 shadow-sm">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
             <XCircle className="w-3.5 h-3.5 text-rose-600" /> REJECTED
           </span>
         );
       case 'RESUMED':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-teal-50 text-teal-800 border border-teal-300 shadow-sm">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-50 text-teal-700 border border-teal-200">
             <RotateCcw className="w-3.5 h-3.5 text-teal-600" /> RESUMED
           </span>
         );
       case 'INITIATED':
       default:
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-300">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
             <Clock className="w-3.5 h-3.5 text-slate-500" /> INITIATED
           </span>
         );
@@ -256,42 +246,42 @@ export default function NegotiationPanel({
   );
 
   return (
-    <div className="space-y-6 animate-fade-in text-slate-800">
+    <div className="space-y-5 animate-fade-in text-slate-800">
       {/* ========================================================================= */}
       {/* 1. HEADER                                                                 */}
       {/* ========================================================================= */}
-      <div className="enterprise-card p-5 bg-[#fbfbfa] border border-[#e8e6df] shadow-sm">
+      <div className="enterprise-card p-5 bg-[#fbfbfa] border border-[#e8e6df] shadow-xs">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded bg-slate-900 text-white shadow-xs">
+              <span className="text-xs font-mono font-semibold px-2.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-300">
                 NEG-{sessionId || '---'}
               </span>
-              <span className="text-xs font-semibold text-slate-600 bg-[#f0eee6] border border-[#e0ddd2] px-2.5 py-0.5 rounded-full">
+              <span className="text-xs font-semibold text-slate-600 bg-white border border-[#e0ddd2] px-2.5 py-0.5 rounded-full">
                 Round <strong className="font-mono text-slate-900">{currentRound}</strong>
               </span>
               {renderStatusBadge(session?.status)}
             </div>
 
-            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
               <span>{session?.pr_title || 'Autonomous Bilateral Sourcing Order'}</span>
             </h2>
 
             <div className="text-xs text-slate-500 flex items-center gap-2 flex-wrap">
               <span>Vendor Counterparty:</span>
               <strong className="text-slate-800 font-medium">{session?.vendor_name || 'Qualified Vendor'}</strong>
-              <span className="text-slate-300">•</span>
+              <span className="text-slate-300">|</span>
               <span>Session #{sessionId}</span>
             </div>
           </div>
 
           {/* Current Settlement Terms */}
-          <div className="flex items-center gap-3 bg-white border border-[#e0ddd2] px-4 py-2.5 rounded-xl shadow-xs shrink-0">
+          <div className="flex items-center gap-3 bg-white border border-[#e8e6df] px-4 py-2 rounded-lg shadow-2xs shrink-0">
             <div className="text-right">
-              <span className="text-[10px] uppercase tracking-wider text-slate-500 font-mono block font-semibold">
+              <span className="text-[10px] uppercase tracking-wider text-slate-500 font-mono block font-medium">
                 Current Offer
               </span>
-              <span className="text-base font-extrabold font-mono text-slate-900">
+              <span className="text-base font-bold font-mono text-slate-900">
                 {currentPrice !== null && currentPrice !== undefined
                   ? `$${Number(currentPrice).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
                   : '---'}
@@ -301,10 +291,10 @@ export default function NegotiationPanel({
             <div className="w-[1px] h-7 bg-[#e8e6df]" />
 
             <div className="text-right">
-              <span className="text-[10px] uppercase tracking-wider text-slate-500 font-mono block font-semibold">
+              <span className="text-[10px] uppercase tracking-wider text-slate-500 font-mono block font-medium">
                 Delivery SLA
               </span>
-              <span className="text-sm font-bold font-mono text-blue-700">
+              <span className="text-sm font-semibold font-mono text-blue-700">
                 {currentDays !== null && currentDays !== undefined
                   ? `${currentDays} days`
                   : '---'}
@@ -315,34 +305,34 @@ export default function NegotiationPanel({
 
         {/* STRICT PRIVACY STRATEGY BANNER (OWNER ROLE ONLY) */}
         {isGovUser && govState && (
-          <div className="mt-3 pt-3 border-t border-[#f0eee6] flex items-center justify-between flex-wrap gap-2 text-[11px] text-slate-600">
-            <div className="flex items-center gap-2">
+          <div className="mt-3 pt-3 border-t border-[#e8e6df] flex items-center justify-between flex-wrap gap-2 text-xs text-slate-600">
+            <div className="flex items-center gap-2 flex-wrap">
               <Lock className="w-3.5 h-3.5 text-blue-600" />
               <span className="font-semibold text-blue-900 uppercase font-mono tracking-wider text-[10px]">
                 Government Private Parameters (Protected):
               </span>
-              <span>Target: <strong className="font-mono text-slate-900">${Number(govState.target_price || 0).toLocaleString()}</strong></span>
-              <span className="text-slate-300">•</span>
-              <span>Budget Ceiling: <strong className="font-mono text-slate-900">${Number(govState.max_authorized_price || 0).toLocaleString()}</strong></span>
+              <span>Target: <strong className="font-mono text-slate-800">${Number(govState.target_price || 0).toLocaleString()}</strong></span>
+              <span className="text-slate-300">|</span>
+              <span>Budget Ceiling: <strong className="font-mono text-slate-800">${Number(govState.max_authorized_price || 0).toLocaleString()}</strong></span>
             </div>
-            <span className="text-[10px] italic text-slate-500 hidden sm:inline">
+            <span className="text-[10px] italic text-slate-400 hidden sm:inline">
               Never disclosed to vendor
             </span>
           </div>
         )}
 
         {isVendorUser && vendorState && (
-          <div className="mt-3 pt-3 border-t border-[#f0eee6] flex items-center justify-between flex-wrap gap-2 text-[11px] text-slate-600">
-            <div className="flex items-center gap-2">
-              <Lock className="w-3.5 h-3.5 text-purple-600" />
-              <span className="font-semibold text-purple-900 uppercase font-mono tracking-wider text-[10px]">
+          <div className="mt-3 pt-3 border-t border-[#e8e6df] flex items-center justify-between flex-wrap gap-2 text-xs text-slate-600">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Lock className="w-3.5 h-3.5 text-slate-600" />
+              <span className="font-semibold text-slate-800 uppercase font-mono tracking-wider text-[10px]">
                 Vendor Commercial Parameters (Protected):
               </span>
-              <span>Target: <strong className="font-mono text-slate-900">${Number(vendorState.target_price || 0).toLocaleString()}</strong></span>
-              <span className="text-slate-300">•</span>
-              <span>Minimum Floor: <strong className="font-mono text-slate-900">${Number(vendorState.absolute_minimum_price || 0).toLocaleString()}</strong></span>
+              <span>Target: <strong className="font-mono text-slate-800">${Number(vendorState.target_price || 0).toLocaleString()}</strong></span>
+              <span className="text-slate-300">|</span>
+              <span>Minimum Floor: <strong className="font-mono text-slate-800">${Number(vendorState.absolute_minimum_price || 0).toLocaleString()}</strong></span>
             </div>
-            <span className="text-[10px] italic text-slate-500 hidden sm:inline">
+            <span className="text-[10px] italic text-slate-400 hidden sm:inline">
               Never disclosed to government
             </span>
           </div>
@@ -368,22 +358,22 @@ export default function NegotiationPanel({
       {/* PROMINENT ESCALATION CARD (Between panels when pending approval)           */}
       {/* ========================================================================= */}
       {isGovUser && isPendingGovState && (
-        <div className="p-5 rounded-xl bg-gradient-to-br from-amber-50 to-orange-50/60 border-2 border-amber-400 shadow-md space-y-4 animate-fade-in">
+        <div className="enterprise-card p-5 bg-amber-50/70 border-2 border-amber-300 shadow-xs space-y-4 animate-fade-in">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3">
-              <div className="w-9 h-9 rounded-lg bg-amber-600 text-white flex items-center justify-center shrink-0 shadow-sm mt-0.5">
-                <AlertTriangle className="w-5 h-5" />
+              <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 border border-amber-300 flex items-center justify-center shrink-0 mt-0.5">
+                <AlertTriangle className="w-4 h-4" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] uppercase font-mono font-bold tracking-wider px-2 py-0.5 rounded bg-amber-200/80 text-amber-900 border border-amber-300">
+                  <span className="text-[10px] uppercase font-mono font-bold tracking-wider px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
                     Human Supervisory Intervention Required
                   </span>
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white text-slate-700 font-bold border border-amber-300">
                     Rule: {relevantEscalation?.role === 'GOVERNMENT' ? 'GOV_MAX_PRICE_CEILING' : 'GOV_AUTHORITY_THRESHOLD'}
                   </span>
                 </div>
-                <h3 className="text-base font-bold text-amber-950 mt-1">
+                <h3 className="text-sm font-bold text-amber-950 mt-1">
                   Algorithmic Authority Limit Reached
                 </h3>
                 <p className="text-xs text-amber-900 mt-1 leading-relaxed max-w-2xl">
@@ -392,7 +382,7 @@ export default function NegotiationPanel({
               </div>
             </div>
 
-            <div className="text-right shrink-0 bg-white/90 border border-amber-300 px-3 py-2 rounded-lg shadow-2xs">
+            <div className="text-right shrink-0 bg-white border border-amber-300 px-3 py-2 rounded-lg shadow-2xs">
               <span className="text-[10px] uppercase font-mono text-slate-500 block">Proposal Under Review</span>
               <strong className="font-mono text-sm text-slate-900 block">
                 ${Number(currentPrice || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
@@ -401,7 +391,7 @@ export default function NegotiationPanel({
             </div>
           </div>
 
-          <div className="pt-3 border-t border-amber-300/80 flex items-center justify-between flex-wrap gap-3">
+          <div className="pt-3 border-t border-amber-200 flex items-center justify-between flex-wrap gap-3">
             <div className="text-xs font-semibold text-amber-950">
               Select an executive action to resolve this escalation:
             </div>
@@ -411,7 +401,7 @@ export default function NegotiationPanel({
                 type="button"
                 disabled={actionLoading}
                 onClick={() => handleGovAction('APPROVE')}
-                className="btn-primary bg-emerald-600 hover:bg-emerald-700 text-xs py-2 px-4 shadow-sm flex items-center gap-1.5 cursor-pointer font-bold"
+                className="btn-primary bg-emerald-600 hover:bg-emerald-700 text-xs py-1.5 px-3.5 shadow-xs flex items-center gap-1.5 cursor-pointer font-bold"
               >
                 <CheckCircle2 className="w-4 h-4" />
                 <span>Approve &amp; Resume</span>
@@ -425,9 +415,9 @@ export default function NegotiationPanel({
                   setCounterDays(currentDays ? String(currentDays) : '');
                   setShowCounterModal(true);
                 }}
-                className="btn-secondary bg-white hover:bg-amber-100 text-amber-950 border-amber-400 text-xs py-2 px-4 flex items-center gap-1.5 cursor-pointer font-bold shadow-2xs"
+                className="btn-secondary bg-white hover:bg-slate-50 text-slate-800 border-[#e8e6df] text-xs py-1.5 px-3.5 flex items-center gap-1.5 cursor-pointer font-semibold shadow-2xs"
               >
-                <Send className="w-4 h-4 text-amber-700" />
+                <Send className="w-4 h-4 text-slate-600" />
                 <span>Manual Counteroffer</span>
               </button>
 
@@ -435,7 +425,7 @@ export default function NegotiationPanel({
                 type="button"
                 disabled={actionLoading}
                 onClick={() => handleGovAction('REJECT')}
-                className="btn-danger text-xs py-2 px-4 flex items-center gap-1.5 cursor-pointer font-bold"
+                className="btn-danger text-xs py-1.5 px-3.5 flex items-center gap-1.5 cursor-pointer font-semibold"
               >
                 <XCircle className="w-4 h-4" />
                 <span>Reject</span>
@@ -447,18 +437,18 @@ export default function NegotiationPanel({
 
       {/* Informational for Government when Vendor Escalation is Pending */}
       {isGovUser && isPendingVendorState && (
-        <div className="p-4 rounded-xl bg-purple-50/90 border-2 border-purple-200 text-purple-950 flex items-start gap-3 shadow-xs">
-          <div className="w-8 h-8 rounded-lg bg-purple-600 text-white flex items-center justify-center shrink-0 mt-0.5">
+        <div className="p-4 rounded-xl bg-slate-50 border border-slate-300 text-slate-800 flex items-start gap-3 shadow-2xs">
+          <div className="w-8 h-8 rounded-lg bg-slate-200 text-slate-700 flex items-center justify-center shrink-0 mt-0.5">
             <Clock className="w-4 h-4" />
           </div>
           <div>
-            <span className="text-[10px] uppercase font-mono font-bold tracking-wider text-purple-700 block">
+            <span className="text-[10px] uppercase font-mono font-bold tracking-wider text-slate-600 block">
               Awaiting Counterparty Concession
             </span>
-            <h4 className="text-sm font-bold text-purple-950">
+            <h4 className="text-sm font-bold text-slate-900">
               Vendor Commercial Leadership Review in Progress
             </h4>
-            <p className="text-xs text-purple-800 mt-1 leading-relaxed">
+            <p className="text-xs text-slate-600 mt-1 leading-relaxed">
               The vendor sales agent has paused negotiations and escalated government terms to vendor corporate management for margin concession approval. The negotiation is paused awaiting their review.
             </p>
           </div>
@@ -467,31 +457,31 @@ export default function NegotiationPanel({
 
       {/* Prominent Vendor Escalation Card */}
       {isVendorUser && isPendingVendorState && (
-        <div className="p-5 rounded-xl bg-gradient-to-br from-purple-50 to-indigo-50/60 border-2 border-purple-400 shadow-md space-y-4 animate-fade-in">
+        <div className="enterprise-card p-5 bg-amber-50/70 border-2 border-amber-300 shadow-xs space-y-4 animate-fade-in">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3">
-              <div className="w-9 h-9 rounded-lg bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-sm mt-0.5">
-                <User className="w-5 h-5" />
+              <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 border border-amber-300 flex items-center justify-center shrink-0 mt-0.5">
+                <User className="w-4 h-4" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] uppercase font-mono font-bold tracking-wider px-2 py-0.5 rounded bg-purple-200 text-purple-900 border border-purple-300">
+                  <span className="text-[10px] uppercase font-mono font-bold tracking-wider px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
                     Vendor Commercial Authority Review
                   </span>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white text-slate-700 font-bold border border-purple-300">
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white text-slate-700 font-bold border border-amber-300">
                     Rule: {relevantEscalation?.role === 'VENDOR' ? 'VENDOR_MIN_PRICE_FLOOR' : 'COMMERCIAL_BOUNDARY'}
                   </span>
                 </div>
-                <h3 className="text-base font-bold text-purple-950 mt-1">
+                <h3 className="text-sm font-bold text-amber-950 mt-1">
                   Commercial Margin Boundary Reached
                 </h3>
-                <p className="text-xs text-purple-900 mt-1 leading-relaxed max-w-2xl">
+                <p className="text-xs text-amber-900 mt-1 leading-relaxed max-w-2xl">
                   {relevantEscalation?.reason || 'Government proposal is below your configured minimum floor. Executive commercial approval is required to concede, counteroffer, or decline.'}
                 </p>
               </div>
             </div>
 
-            <div className="text-right shrink-0 bg-white/90 border border-purple-300 px-3 py-2 rounded-lg shadow-2xs">
+            <div className="text-right shrink-0 bg-white border border-amber-300 px-3 py-2 rounded-lg shadow-2xs">
               <span className="text-[10px] uppercase font-mono text-slate-500 block">Government Offer</span>
               <strong className="font-mono text-sm text-slate-900 block">
                 ${Number(currentPrice || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
@@ -500,9 +490,9 @@ export default function NegotiationPanel({
             </div>
           </div>
 
-          <div className="pt-3 border-t border-purple-300/80 flex items-center justify-between flex-wrap gap-3">
-            <div className="text-xs font-semibold text-purple-950">
-              Commercial executive decision options:
+          <div className="pt-3 border-t border-amber-200 flex items-center justify-between flex-wrap gap-3">
+            <div className="text-xs font-semibold text-amber-950">
+              Select an executive commercial action:
             </div>
 
             <div className="flex items-center gap-2.5 flex-wrap">
@@ -510,10 +500,10 @@ export default function NegotiationPanel({
                 type="button"
                 disabled={actionLoading}
                 onClick={() => handleVendorAction('APPROVE')}
-                className="btn-primary bg-purple-600 hover:bg-purple-700 text-xs py-2 px-4 shadow-sm flex items-center gap-1.5 cursor-pointer font-bold"
+                className="btn-primary bg-emerald-600 hover:bg-emerald-700 text-xs py-1.5 px-3.5 shadow-xs flex items-center gap-1.5 cursor-pointer font-bold"
               >
                 <CheckCircle2 className="w-4 h-4" />
-                <span>Approve &amp; Resume</span>
+                <span>Approve Concession</span>
               </button>
 
               <button
@@ -524,17 +514,17 @@ export default function NegotiationPanel({
                   setCounterDays(currentDays ? String(currentDays) : '');
                   setShowCounterModal(true);
                 }}
-                className="btn-secondary bg-white hover:bg-purple-100 text-purple-950 border-purple-400 text-xs py-2 px-4 flex items-center gap-1.5 cursor-pointer font-bold shadow-2xs"
+                className="btn-secondary bg-white hover:bg-slate-50 text-slate-800 border-[#e8e6df] text-xs py-1.5 px-3.5 flex items-center gap-1.5 cursor-pointer font-semibold shadow-2xs"
               >
-                <Send className="w-4 h-4 text-purple-700" />
-                <span>Manual Counteroffer</span>
+                <Send className="w-4 h-4 text-slate-600" />
+                <span>Counteroffer</span>
               </button>
 
               <button
                 type="button"
                 disabled={actionLoading}
                 onClick={() => handleVendorAction('REJECT')}
-                className="btn-danger text-xs py-2 px-4 flex items-center gap-1.5 cursor-pointer font-bold"
+                className="btn-danger text-xs py-1.5 px-3.5 flex items-center gap-1.5 cursor-pointer font-semibold"
               >
                 <XCircle className="w-4 h-4" />
                 <span>Reject</span>
@@ -546,18 +536,18 @@ export default function NegotiationPanel({
 
       {/* Informational for Vendor when Government Escalation is Pending */}
       {isVendorUser && isPendingGovState && (
-        <div className="p-4 rounded-xl bg-amber-50/90 border-2 border-amber-200 text-amber-950 flex items-start gap-3 shadow-xs">
-          <div className="w-8 h-8 rounded-lg bg-amber-600 text-white flex items-center justify-center shrink-0 mt-0.5">
+        <div className="p-4 rounded-xl bg-slate-50 border border-slate-300 text-slate-800 flex items-start gap-3 shadow-2xs">
+          <div className="w-8 h-8 rounded-lg bg-slate-200 text-slate-700 flex items-center justify-center shrink-0 mt-0.5">
             <Clock className="w-4 h-4" />
           </div>
           <div>
-            <span className="text-[10px] uppercase font-mono font-bold tracking-wider text-amber-700 block">
+            <span className="text-[10px] uppercase font-mono font-bold tracking-wider text-slate-600 block">
               Awaiting Government Approval
             </span>
-            <h4 className="text-sm font-bold text-amber-950">
+            <h4 className="text-sm font-bold text-slate-900">
               Government Procurement Authority Review in Progress
             </h4>
-            <p className="text-xs text-amber-800 mt-1 leading-relaxed">
+            <p className="text-xs text-slate-600 mt-1 leading-relaxed">
               Vendor terms have been escalated to the government procurement supervisor for budget ceiling exception approval. Negotiation is currently paused.
             </p>
           </div>
@@ -568,10 +558,10 @@ export default function NegotiationPanel({
       {/* 2. MAIN NEGOTIATION AREA: TWO AUTONOMOUS AGENTS SIDE-BY-SIDE              */}
       {/* ========================================================================= */}
       <div className="space-y-3">
-        <div className="flex items-center justify-between px-1">
+        <div className="flex items-center justify-between px-0.5">
           <div className="flex items-center gap-2">
-            <Bot className="w-4 h-4 text-slate-700" />
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 font-mono">
+            <Bot className="w-4 h-4 text-slate-600" />
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 font-mono">
               Bilateral Autonomous Agent Arena
             </h3>
           </div>
@@ -580,45 +570,45 @@ export default function NegotiationPanel({
           </span>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* --------------------------------------------------------------------- */}
           {/* LEFT COLUMN: Government Agent                                         */}
           {/* --------------------------------------------------------------------- */}
-          <div className="enterprise-card overflow-hidden border border-blue-200/80 bg-[#f8fafc] flex flex-col shadow-xs">
+          <div className="enterprise-card overflow-hidden border border-[#e8e6df] border-t-2 border-t-blue-600 bg-white flex flex-col shadow-xs">
             {/* Gov Agent Header */}
-            <div className="bg-gradient-to-r from-blue-950 via-blue-900 to-slate-900 text-white p-3.5 flex items-center justify-between border-b border-blue-800">
+            <div className="bg-[#fbfbfa] p-3 flex items-center justify-between border-b border-[#e8e6df]">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs">
+                <div className="w-7 h-7 rounded bg-blue-50 text-blue-700 border border-blue-200 flex items-center justify-center shadow-2xs">
                   <Bot className="w-4 h-4" />
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5">
-                    <h4 className="text-xs font-bold text-white tracking-wide">Government Agent</h4>
-                    <span className="text-[9px] px-1.5 py-0.2 rounded font-mono font-bold bg-blue-500/30 text-blue-200 border border-blue-400/30">
+                    <h4 className="text-xs font-bold text-slate-900 tracking-wide">Government Agent</h4>
+                    <span className="text-[9px] px-1.5 py-0.2 rounded font-mono font-bold bg-blue-50 text-blue-700 border border-blue-200">
                       BUYER
                     </span>
                   </div>
-                  <p className="text-[10px] text-blue-200/80 font-mono">
-                    Autonomous Public Procurement Buyer
+                  <p className="text-[10px] text-slate-500 font-mono">
+                    Autonomous Sourcing AI
                   </p>
                 </div>
               </div>
 
               <div className="text-right">
-                <span className="text-[9px] uppercase font-mono tracking-widest text-blue-300 block font-semibold">
-                  Offers &amp; Counters
+                <span className="text-[9px] uppercase font-mono tracking-wider text-slate-400 block font-semibold">
+                  Proposals
                 </span>
-                <span className="text-xs font-mono font-bold text-white">
+                <span className="text-xs font-mono font-bold text-slate-800">
                   {govEvents.length} Actions
                 </span>
               </div>
             </div>
 
             {/* Gov Agent Offers Stream */}
-            <div className="p-4 space-y-3 flex-1 overflow-y-auto max-h-[560px]">
+            <div className="p-3.5 space-y-2.5 flex-1 overflow-y-auto max-h-[540px] bg-[#faf9f6]">
               {govEvents.length === 0 ? (
                 <div className="py-12 text-center text-xs text-slate-400 space-y-2">
-                  <Bot className="w-8 h-8 text-blue-300 mx-auto opacity-50" />
+                  <Bot className="w-7 h-7 text-slate-300 mx-auto opacity-70" />
                   <p>Awaiting opening government proposal...</p>
                 </div>
               ) : (
@@ -630,30 +620,30 @@ export default function NegotiationPanel({
                   return (
                     <div
                       key={ev.id || idx}
-                      className={`p-3.5 rounded-xl border transition-all ${
+                      className={`p-3 rounded-lg border transition-all ${
                         isHuman
-                          ? 'bg-amber-50/70 border-amber-300 shadow-xs'
+                          ? 'bg-amber-50/60 border-amber-300 shadow-2xs'
                           : isAccept
-                          ? 'bg-emerald-50/70 border-emerald-300 shadow-xs'
+                          ? 'bg-emerald-50/60 border-emerald-300 shadow-2xs'
                           : isReject
-                          ? 'bg-rose-50/70 border-rose-300 shadow-xs'
-                          : 'bg-white border-blue-200 shadow-xs hover:border-blue-300'
+                          ? 'bg-rose-50/60 border-rose-300 shadow-2xs'
+                          : 'bg-white border-[#e8e6df] shadow-2xs hover:border-slate-300'
                       }`}
                     >
                       {/* Card Top Meta */}
                       <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-900 border border-blue-200">
+                          <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-800 border border-blue-200">
                             Round {ev.round ?? 0}
                           </span>
-                          <span className={`text-[9px] font-mono px-2 py-0.5 rounded font-bold border ${
+                          <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded font-bold border ${
                             isHuman
                               ? 'bg-amber-100 text-amber-900 border-amber-300'
                               : isAccept
                               ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
                               : isReject
                               ? 'bg-rose-100 text-rose-900 border-rose-300'
-                              : 'bg-slate-100 text-slate-800 border-slate-200'
+                              : 'bg-slate-100 text-slate-700 border-slate-200'
                           }`}>
                             {isHuman ? 'HUMAN OVERRIDE' : ev.event_type || 'OFFER'}
                           </span>
@@ -669,13 +659,13 @@ export default function NegotiationPanel({
                       {/* Terms Chips */}
                       <div className="pt-2 flex items-center gap-2 flex-wrap">
                         {ev.price !== null && ev.price !== undefined && (
-                          <span className="inline-flex items-center gap-1 font-mono text-xs font-bold px-2.5 py-1 rounded-md bg-blue-50 text-blue-900 border border-blue-200">
+                          <span className="inline-flex items-center gap-1 font-mono text-xs font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-900 border border-blue-200">
                             <DollarSign className="w-3.5 h-3.5 text-blue-600" />
                             ${Number(ev.price).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                           </span>
                         )}
                         {ev.delivery_days !== null && ev.delivery_days !== undefined && (
-                          <span className="inline-flex items-center gap-1 font-mono text-xs font-semibold px-2.5 py-1 rounded-md bg-slate-50 text-slate-700 border border-slate-200">
+                          <span className="inline-flex items-center gap-1 font-mono text-xs font-semibold px-2 py-0.5 rounded bg-[#f5f4f0] text-slate-700 border border-[#e8e6df]">
                             <Calendar className="w-3.5 h-3.5 text-slate-500" />
                             {ev.delivery_days} days SLA
                           </span>
@@ -684,7 +674,7 @@ export default function NegotiationPanel({
 
                       {/* Public Message Statement */}
                       <div className="pt-2">
-                        <p className="text-xs text-slate-700 leading-relaxed italic bg-[#fcfbf9] p-2.5 rounded-lg border border-[#f0eee6]">
+                        <p className="text-xs text-slate-700 leading-relaxed bg-[#fbfbfa] p-2 rounded border border-[#f0eee6]">
                           &ldquo;{ev.message}&rdquo;
                         </p>
                       </div>
@@ -698,41 +688,41 @@ export default function NegotiationPanel({
           {/* --------------------------------------------------------------------- */}
           {/* RIGHT COLUMN: Vendor Agent                                            */}
           {/* --------------------------------------------------------------------- */}
-          <div className="enterprise-card overflow-hidden border border-purple-200/80 bg-[#faf8fc] flex flex-col shadow-xs">
+          <div className="enterprise-card overflow-hidden border border-[#e8e6df] border-t-2 border-t-slate-500 bg-white flex flex-col shadow-xs">
             {/* Vendor Agent Header */}
-            <div className="bg-gradient-to-r from-purple-950 via-purple-900 to-indigo-950 text-white p-3.5 flex items-center justify-between border-b border-purple-800">
+            <div className="bg-[#fbfbfa] p-3 flex items-center justify-between border-b border-[#e8e6df]">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-purple-600 text-white flex items-center justify-center shadow-xs">
+                <div className="w-7 h-7 rounded bg-slate-100 text-slate-700 border border-slate-300 flex items-center justify-center shadow-2xs">
                   <Bot className="w-4 h-4" />
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5">
-                    <h4 className="text-xs font-bold text-white tracking-wide">Vendor Agent</h4>
-                    <span className="text-[9px] px-1.5 py-0.2 rounded font-mono font-bold bg-purple-500/30 text-purple-200 border border-purple-400/30">
+                    <h4 className="text-xs font-bold text-slate-900 tracking-wide">Vendor Agent</h4>
+                    <span className="text-[9px] px-1.5 py-0.2 rounded font-mono font-bold bg-slate-100 text-slate-700 border border-slate-300">
                       SELLER
                     </span>
                   </div>
-                  <p className="text-[10px] text-purple-200/80 font-mono">
+                  <p className="text-[10px] text-slate-500 font-mono">
                     Autonomous Supplier Sales AI
                   </p>
                 </div>
               </div>
 
               <div className="text-right">
-                <span className="text-[9px] uppercase font-mono tracking-widest text-purple-300 block font-semibold">
-                  Offers &amp; Counters
+                <span className="text-[9px] uppercase font-mono tracking-wider text-slate-400 block font-semibold">
+                  Proposals
                 </span>
-                <span className="text-xs font-mono font-bold text-white">
+                <span className="text-xs font-mono font-bold text-slate-800">
                   {vendorEvents.length} Actions
                 </span>
               </div>
             </div>
 
             {/* Vendor Agent Offers Stream */}
-            <div className="p-4 space-y-3 flex-1 overflow-y-auto max-h-[560px]">
+            <div className="p-3.5 space-y-2.5 flex-1 overflow-y-auto max-h-[540px] bg-[#faf9f6]">
               {vendorEvents.length === 0 ? (
                 <div className="py-12 text-center text-xs text-slate-400 space-y-2">
-                  <Bot className="w-8 h-8 text-purple-300 mx-auto opacity-50" />
+                  <Bot className="w-7 h-7 text-slate-300 mx-auto opacity-70" />
                   <p>Awaiting vendor counterproposal...</p>
                 </div>
               ) : (
@@ -744,32 +734,32 @@ export default function NegotiationPanel({
                   return (
                     <div
                       key={ev.id || idx}
-                      className={`p-3.5 rounded-xl border transition-all ${
+                      className={`p-3 rounded-lg border transition-all ${
                         isHuman
-                          ? 'bg-emerald-50/70 border-emerald-300 shadow-xs'
+                          ? 'bg-emerald-50/60 border-emerald-300 shadow-2xs'
                           : isAccept
-                          ? 'bg-emerald-50/70 border-emerald-300 shadow-xs'
+                          ? 'bg-emerald-50/60 border-emerald-300 shadow-2xs'
                           : isReject
-                          ? 'bg-rose-50/70 border-rose-300 shadow-xs'
-                          : 'bg-white border-purple-200 shadow-xs hover:border-purple-300'
+                          ? 'bg-rose-50/60 border-rose-300 shadow-2xs'
+                          : 'bg-white border-[#e8e6df] shadow-2xs hover:border-slate-300'
                       }`}
                     >
                       {/* Card Top Meta */}
                       <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-purple-100 text-purple-900 border border-purple-200">
+                          <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
                             Round {ev.round ?? 0}
                           </span>
-                          <span className={`text-[9px] font-mono px-2 py-0.5 rounded font-bold border ${
+                          <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded font-bold border ${
                             isHuman
                               ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
                               : isAccept
                               ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
                               : isReject
                               ? 'bg-rose-100 text-rose-900 border-rose-300'
-                              : 'bg-slate-100 text-slate-800 border-slate-200'
+                              : 'bg-slate-100 text-slate-700 border-slate-200'
                           }`}>
-                            {isHuman ? 'VENDOR HUMAN' : ev.event_type || 'OFFER'}
+                            {isHuman ? 'HUMAN OVERRIDE' : ev.event_type || 'OFFER'}
                           </span>
                         </div>
 
@@ -783,13 +773,13 @@ export default function NegotiationPanel({
                       {/* Terms Chips */}
                       <div className="pt-2 flex items-center gap-2 flex-wrap">
                         {ev.price !== null && ev.price !== undefined && (
-                          <span className="inline-flex items-center gap-1 font-mono text-xs font-bold px-2.5 py-1 rounded-md bg-purple-50 text-purple-900 border border-purple-200">
-                            <DollarSign className="w-3.5 h-3.5 text-purple-600" />
+                          <span className="inline-flex items-center gap-1 font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-900 border border-slate-300">
+                            <DollarSign className="w-3.5 h-3.5 text-slate-600" />
                             ${Number(ev.price).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                           </span>
                         )}
                         {ev.delivery_days !== null && ev.delivery_days !== undefined && (
-                          <span className="inline-flex items-center gap-1 font-mono text-xs font-semibold px-2.5 py-1 rounded-md bg-slate-50 text-slate-700 border border-slate-200">
+                          <span className="inline-flex items-center gap-1 font-mono text-xs font-semibold px-2 py-0.5 rounded bg-[#f5f4f0] text-slate-700 border border-[#e8e6df]">
                             <Calendar className="w-3.5 h-3.5 text-slate-500" />
                             {ev.delivery_days} days SLA
                           </span>
@@ -798,7 +788,7 @@ export default function NegotiationPanel({
 
                       {/* Public Message Statement */}
                       <div className="pt-2">
-                        <p className="text-xs text-slate-700 leading-relaxed italic bg-[#fcfbf9] p-2.5 rounded-lg border border-[#f0eee6]">
+                        <p className="text-xs text-slate-700 leading-relaxed bg-[#fbfbfa] p-2 rounded border border-[#f0eee6]">
                           &ldquo;{ev.message}&rdquo;
                         </p>
                       </div>
@@ -812,58 +802,55 @@ export default function NegotiationPanel({
       </div>
 
       {/* ========================================================================= */}
-      {/* 3. CENTER / BOTTOM: DETERMINISTIC POLICY ENGINE                           */}
+      {/* 3. POLICY ENGINE EVALUATION & DETERMINISTIC RULES                          */}
       {/* ========================================================================= */}
       <div className="enterprise-card p-4 bg-white border border-[#e8e6df] shadow-xs space-y-3">
         <div className="flex items-center justify-between pb-2 border-b border-[#f0eee6]">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md bg-slate-900 text-white flex items-center justify-center">
-              <Shield className="w-3.5 h-3.5" />
+            <div className="w-6 h-6 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center">
+              <Scale className="w-3.5 h-3.5" />
             </div>
             <div>
               <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider font-mono">
                 Policy Engine Evaluation
               </h4>
               <p className="text-[10px] text-slate-500">
-                Deterministic State Machine &amp; Threshold Verification
+                Autonomous governance rules enforcing statutory and commercial boundaries
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono text-slate-500 uppercase">Current Directive:</span>
-            <span className={`text-xs font-mono font-bold px-2.5 py-1 rounded-md border ${
-              policyAction === 'ACCEPT'
-                ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
-                : policyAction === 'ESCALATE'
-                ? 'bg-amber-100 text-amber-900 border-amber-300'
-                : policyAction === 'REJECT'
-                ? 'bg-rose-100 text-rose-900 border-rose-300'
-                : 'bg-blue-100 text-blue-900 border-blue-300'
-            }`}>
-              {policyAction}
-            </span>
-          </div>
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#f5f4f0] text-slate-600 border border-[#e8e6df]">
+            Deterministic Rule Validator
+          </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+        {/* Status / Active Rule / Action Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
           <div className="p-2.5 rounded-lg bg-[#fbfbfa] border border-[#e8e6df]">
-            <span className="text-[10px] font-mono text-slate-500 uppercase block">Rule Evaluated</span>
-            <strong className="font-mono text-slate-900 text-xs mt-0.5 block truncate">
+            <span className="text-[10px] font-mono text-slate-500 uppercase block font-semibold">Decision State</span>
+            <div className="mt-1 flex items-center gap-1.5">
+              <span className={`text-xs font-bold font-mono px-2 py-0.5 rounded border ${
+                policyAction === 'ACCEPT' ? 'bg-emerald-50 text-emerald-800 border-emerald-300' :
+                policyAction === 'ESCALATE' ? 'bg-amber-50 text-amber-800 border-amber-300' :
+                policyAction === 'REJECT' ? 'bg-rose-50 text-rose-800 border-rose-300' :
+                'bg-blue-50 text-blue-800 border-blue-200'
+              }`}>
+                {policyAction}
+              </span>
+            </div>
+          </div>
+
+          <div className="p-2.5 rounded-lg bg-[#fbfbfa] border border-[#e8e6df]">
+            <span className="text-[10px] font-mono text-slate-500 uppercase block font-semibold">Active Policy Rule</span>
+            <span className="text-xs font-bold font-mono text-slate-800 mt-1 block truncate">
               {policyRule}
-            </strong>
+            </span>
           </div>
 
           <div className="p-2.5 rounded-lg bg-[#fbfbfa] border border-[#e8e6df]">
-            <span className="text-[10px] font-mono text-slate-500 uppercase block">Settlement Parameter</span>
-            <strong className="font-mono text-slate-900 text-xs mt-0.5 block">
-              ${Number(currentPrice || 0).toLocaleString()} · {currentDays || '--'} Days
-            </strong>
-          </div>
-
-          <div className="p-2.5 rounded-lg bg-[#fbfbfa] border border-[#e8e6df]">
-            <span className="text-[10px] font-mono text-slate-500 uppercase block">Algorithmic Outcome</span>
-            <span className="text-xs text-slate-700 mt-0.5 block">
+            <span className="text-[10px] font-mono text-slate-500 uppercase block font-semibold">Algorithmic Outcome</span>
+            <span className="text-xs text-slate-700 mt-1 block">
               {policyAction === 'ACCEPT' && 'Terms converged within budget ceiling. Consensus approved.'}
               {policyAction === 'ESCALATE' && 'Supervisory threshold crossed. Paused for human decision.'}
               {policyAction === 'REJECT' && 'Terms violate non-negotiable boundaries. Terminated.'}
@@ -916,7 +903,7 @@ export default function NegotiationPanel({
       <div className="enterprise-card p-4 bg-white border border-[#e8e6df] shadow-xs space-y-3">
         <div className="flex items-center justify-between pb-2 border-b border-[#f0eee6]">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md bg-slate-800 text-white flex items-center justify-center">
+            <div className="w-6 h-6 rounded bg-slate-100 text-slate-700 border border-slate-300 flex items-center justify-center">
               <FileText className="w-3.5 h-3.5" />
             </div>
             <div>
@@ -942,13 +929,13 @@ export default function NegotiationPanel({
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead>
-                <tr className="border-b border-[#e8e6df] text-[10px] font-mono text-slate-500 uppercase tracking-wider">
-                  <th className="pb-2"># / Round</th>
-                  <th className="pb-2">Speaker</th>
-                  <th className="pb-2">Event</th>
-                  <th className="pb-2">Price &amp; SLA</th>
-                  <th className="pb-2">Action / Justification Statement</th>
-                  <th className="pb-2 text-right">Time</th>
+                <tr className="border-b border-[#e8e6df] bg-[#fbfbfa] text-[10px] font-mono text-slate-500 uppercase tracking-wider">
+                  <th className="py-1.5 px-2"># / Round</th>
+                  <th className="py-1.5 px-2">Speaker</th>
+                  <th className="py-1.5 px-2">Event</th>
+                  <th className="py-1.5 px-2">Price &amp; SLA</th>
+                  <th className="py-1.5 px-2">Action / Justification Statement</th>
+                  <th className="py-1.5 px-2 text-right">Time</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#f0eee6]">
@@ -960,24 +947,24 @@ export default function NegotiationPanel({
 
                   return (
                     <tr key={ev.id || index} className="hover:bg-[#fcfbf9] transition-colors">
-                      <td className="py-2.5 font-mono text-[11px] font-bold text-slate-600 whitespace-nowrap">
-                        #{index + 1} · R{ev.round ?? 0}
+                      <td className="py-2 px-2 font-mono text-[11px] font-bold text-slate-600 whitespace-nowrap">
+                        #{index + 1} | R{ev.round ?? 0}
                       </td>
 
-                      <td className="py-2.5 whitespace-nowrap">
+                      <td className="py-2 px-2 whitespace-nowrap">
                         <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full border ${
                           isHuman
                             ? 'bg-amber-50 text-amber-900 border-amber-300'
                             : isGov
                             ? 'bg-blue-50 text-blue-800 border-blue-200'
-                            : 'bg-purple-50 text-purple-800 border-purple-200'
+                            : 'bg-slate-100 text-slate-800 border-slate-300'
                         }`}>
                           {isHuman ? <User className="w-3 h-3" /> : <Bot className="w-3 h-3" />}
                           <span>{isHuman ? (isGov ? 'Human Gov' : 'Human Vendor') : (isGov ? 'Gov Agent' : 'Vendor Agent')}</span>
                         </span>
                       </td>
 
-                      <td className="py-2.5 whitespace-nowrap">
+                      <td className="py-2 px-2 whitespace-nowrap">
                         <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold border ${
                           isAccept
                             ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
@@ -991,7 +978,7 @@ export default function NegotiationPanel({
                         </span>
                       </td>
 
-                      <td className="py-2.5 whitespace-nowrap font-mono text-[11px]">
+                      <td className="py-2 px-2 whitespace-nowrap font-mono text-[11px]">
                         {ev.price !== null && ev.price !== undefined ? (
                           <strong className="text-slate-900 font-bold">
                             ${Number(ev.price).toLocaleString('en-US', { minimumFractionDigits: 2 })}
@@ -1004,11 +991,11 @@ export default function NegotiationPanel({
                         )}
                       </td>
 
-                      <td className="py-2.5 text-xs text-slate-600 max-w-md truncate">
+                      <td className="py-2 px-2 text-xs text-slate-600 max-w-md truncate">
                         {ev.message || '---'}
                       </td>
 
-                      <td className="py-2.5 text-right font-mono text-[10px] text-slate-400 whitespace-nowrap">
+                      <td className="py-2 px-2 text-right font-mono text-[10px] text-slate-400 whitespace-nowrap">
                         {ev.created_at
                           ? new Date(ev.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
                           : '---'}
@@ -1023,14 +1010,14 @@ export default function NegotiationPanel({
 
         {/* Final Consensus Summary Bar */}
         {currentStatus === 'ACCEPTED' && (
-          <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between flex-wrap gap-2">
+          <div className="p-3 rounded-lg bg-emerald-50/80 border border-emerald-200 flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2 text-xs text-emerald-900 font-semibold">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>
                 Agreement Settlement: Final terms confirmed at <strong>${Number(currentPrice || 0).toLocaleString()}</strong> with <strong>{currentDays || '--'} delivery days SLA</strong>.
               </span>
             </div>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-200/80 text-emerald-950 font-bold">
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-100 text-emerald-950 font-bold border border-emerald-200">
               Ready for Purchase Order
             </span>
           </div>
@@ -1041,11 +1028,15 @@ export default function NegotiationPanel({
       {/* MANUAL COUNTEROFFER MODAL                                                 */}
       {/* ========================================================================= */}
       {showCounterModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-fade-in">
-          <div className="bg-white rounded-xl shadow-2xl border border-[#d8d5ca] max-w-md w-full p-5 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 animate-fade-in">
+          <div className="bg-white rounded-xl shadow-xl border border-[#d8d5ca] max-w-md w-full p-5 space-y-4">
             <div className="flex items-center justify-between border-b border-[#e8e6df] pb-3">
               <div className="flex items-center gap-2">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-xs ${isGovUser ? 'bg-amber-600' : 'bg-purple-600'}`}>
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-2xs border ${
+                  isGovUser
+                    ? 'bg-blue-50 text-blue-700 border-blue-200'
+                    : 'bg-slate-100 text-slate-700 border-slate-300'
+                }`}>
                   <User className="w-4 h-4" />
                 </div>
                 <div>
@@ -1129,7 +1120,7 @@ export default function NegotiationPanel({
                   type="submit"
                   disabled={actionLoading}
                   className={`btn-primary text-xs py-2 px-4 flex items-center gap-1.5 cursor-pointer ${
-                    isGovUser ? 'bg-amber-600 hover:bg-amber-700' : 'bg-purple-600 hover:bg-purple-700'
+                    isGovUser ? 'bg-blue-600 hover:bg-blue-700' : 'bg-slate-700 hover:bg-slate-800'
                   }`}
                 >
                   <Send className="w-3.5 h-3.5" />
