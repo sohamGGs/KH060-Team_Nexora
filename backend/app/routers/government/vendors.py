@@ -239,7 +239,7 @@ def run_autonomous_negotiation_endpoint(
             .filter(
                 NegotiationSession.vendor_bid_id == bid.id,
                 NegotiationSession.status.in_(
-                    ["INITIATED", "NEGOTIATING", "ESCALATED", "PENDING_APPROVAL", "RESUMED"]
+                    ["INITIATED", "NEGOTIATING", "ESCALATED", "PENDING_APPROVAL", "RESUMED", "PENDING_GOV_APPROVAL", "PENDING_VENDOR_APPROVAL"]
                 ),
             )
             .first()

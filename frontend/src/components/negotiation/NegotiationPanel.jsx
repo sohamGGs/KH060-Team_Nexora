@@ -19,7 +19,12 @@ import {
   ChevronRight,
   Info,
   X,
-  FileText
+  FileText,
+  Scale,
+  Lock,
+  ArrowDownRight,
+  ArrowUpRight,
+  Activity
 } from 'lucide-react';
 import { negotiationsAPI, vendorPortalAPI } from '../../api';
 
@@ -27,6 +32,9 @@ export default function NegotiationPanel({
   session,
   events = [],
   escalations = [],
+  decisions = [],
+  govState = null,
+  vendorState = null,
   userRole = 'Lead Procurement Officer',
   onActionComplete,
   onRefresh
@@ -44,126 +52,55 @@ export default function NegotiationPanel({
   const isGovUser = !isVendorUser;
   const sessionId = session?.id || session?.session_id;
 
-  // Format Status Badge
+  // Render Status Badge
   const renderStatusBadge = (status) => {
     switch (status?.toUpperCase()) {
       case 'COMPLETED':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-sm">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" /> COMPLETED
-          </span>
-        );
       case 'ACCEPTED':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-300 shadow-sm">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-300 shadow-sm">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> ACCEPTED
           </span>
         );
       case 'NEGOTIATING':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-blue-50 text-blue-700 border border-blue-300 animate-pulse shadow-sm">
-            <Bot className="w-3.5 h-3.5 text-blue-600" /> NEGOTIATING
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-300 animate-pulse shadow-sm">
+            <Activity className="w-3.5 h-3.5 text-blue-600 animate-spin" /> NEGOTIATING
           </span>
         );
       case 'ESCALATED':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-amber-100 text-amber-900 border border-amber-400 shadow-sm animate-pulse">
-            <AlertTriangle className="w-3.5 h-3.5 text-amber-700" /> ESCALATED
-          </span>
-        );
       case 'PENDING_GOV_APPROVAL':
       case 'PENDING_APPROVAL':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-amber-50 text-amber-900 border border-amber-300 shadow-sm">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-900 border border-amber-400 shadow-sm animate-pulse">
             <AlertTriangle className="w-3.5 h-3.5 text-amber-600" /> PENDING GOV APPROVAL
           </span>
         );
       case 'PENDING_VENDOR_APPROVAL':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-purple-50 text-purple-900 border border-purple-300 shadow-sm">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-purple-50 text-purple-900 border border-purple-300 shadow-sm animate-pulse">
             <Clock className="w-3.5 h-3.5 text-purple-600" /> PENDING VENDOR APPROVAL
           </span>
         );
       case 'REJECTED':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-rose-50 text-rose-800 border border-rose-300 shadow-sm">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-800 border border-rose-300 shadow-sm">
             <XCircle className="w-3.5 h-3.5 text-rose-600" /> REJECTED
           </span>
         );
       case 'RESUMED':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-teal-50 text-teal-800 border border-teal-300 shadow-sm">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-teal-50 text-teal-800 border border-teal-300 shadow-sm">
             <RotateCcw className="w-3.5 h-3.5 text-teal-600" /> RESUMED
           </span>
         );
       case 'INITIATED':
       default:
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-300">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-300">
             <Clock className="w-3.5 h-3.5 text-slate-500" /> INITIATED
           </span>
         );
-    }
-  };
-
-  // Speaker formatting and avatars
-  const getSpeakerConfig = (speakerRole) => {
-    const s = (speakerRole || '').toUpperCase();
-    if (s.includes('GOV') && (s.includes('AGENT') || s === 'GOVERNMENT')) {
-      return {
-        label: 'Government Procurement Agent',
-        subtext: 'Bilateral Algorithmic Policy Buyer',
-        type: 'GOV_AGENT',
-        avatarBg: 'bg-blue-600 text-white',
-        bubbleBg: 'bg-blue-50/70 border-blue-200 text-slate-900',
-        badgeBg: 'bg-blue-100 text-blue-800 border-blue-200',
-        icon: Bot,
-        align: 'left'
-      };
-    } else if (s.includes('VENDOR') && (s.includes('AGENT') || s === 'VENDOR')) {
-      return {
-        label: 'Vendor Sales Agent',
-        subtext: 'Commercial AI Negotiator',
-        type: 'VENDOR_AGENT',
-        avatarBg: 'bg-purple-600 text-white',
-        bubbleBg: 'bg-purple-50/70 border-purple-200 text-slate-900',
-        badgeBg: 'bg-purple-100 text-purple-800 border-purple-200',
-        icon: Bot,
-        align: 'right'
-      };
-    } else if (s.includes('HUMAN') && s.includes('GOV')) {
-      return {
-        label: 'Human Government Officer',
-        subtext: 'Executive Authority Intervention',
-        type: 'HUMAN_GOV',
-        avatarBg: 'bg-amber-600 text-white',
-        bubbleBg: 'bg-amber-50/80 border-amber-200 text-slate-900',
-        badgeBg: 'bg-amber-100 text-amber-900 border-amber-300',
-        icon: User,
-        align: 'left'
-      };
-    } else if (s.includes('HUMAN') && s.includes('VENDOR')) {
-      return {
-        label: 'Human Vendor Representative',
-        subtext: 'Commercial Director Intervention',
-        type: 'HUMAN_VENDOR',
-        avatarBg: 'bg-emerald-600 text-white',
-        bubbleBg: 'bg-emerald-50/80 border-emerald-200 text-slate-900',
-        badgeBg: 'bg-emerald-100 text-emerald-900 border-emerald-300',
-        icon: User,
-        align: 'right'
-      };
-    } else {
-      return {
-        label: 'LokProcure Policy Engine',
-        subtext: 'Deterministic State & Policy Boundary',
-        type: 'SYSTEM',
-        avatarBg: 'bg-slate-700 text-white',
-        bubbleBg: 'bg-[#f5f4f0] border-[#e8e6df] text-slate-800',
-        badgeBg: 'bg-slate-200 text-slate-800 border-slate-300',
-        icon: Shield,
-        align: 'center'
-      };
     }
   };
 
@@ -185,15 +122,14 @@ export default function NegotiationPanel({
       const resp = await negotiationsAPI.actionEscalation(
         sessionId,
         decision,
-        comment || (decision === 'APPROVE' ? 'Executive exception approved' : 'Proposal rejected by procurement authority')
+        comment || (decision === 'APPROVE' ? 'Executive exception approved by procurement authority' : 'Proposal rejected by procurement authority')
       );
-      setSuccessMsg(`Escalation decision recorded: ${decision}`);
+      setSuccessMsg(`Government decision recorded: ${decision}`);
       
-      // If approved, trigger resume
       if (decision === 'APPROVE') {
         try {
           await negotiationsAPI.resumeNegotiation(sessionId);
-          setSuccessMsg('Escalation approved and negotiation successfully resumed!');
+          setSuccessMsg('Escalation approved and bilateral negotiation successfully resumed!');
         } catch (resumeErr) {
           console.warn('Resume triggered with notice:', resumeErr);
         }
@@ -283,118 +219,201 @@ export default function NegotiationPanel({
 
   const currentPrice = session?.current_price ?? (events?.length ? events[events.length - 1]?.price : null);
   const currentDays = session?.current_delivery_days ?? (events?.length ? events[events.length - 1]?.delivery_days : null);
+  const currentRound = session?.current_round ?? (events?.length ? Math.max(...events.map(e => e.round || 0)) : 0);
+
+  // Group events by speaker role
+  const isGovSpeaker = (role) => {
+    const r = (role || '').toUpperCase();
+    return r.includes('GOV') || r === 'GOVERNMENT';
+  };
+
+  const isVendorSpeaker = (role) => {
+    const r = (role || '').toUpperCase();
+    return r.includes('VENDOR');
+  };
+
+  const govEvents = events.filter(e => isGovSpeaker(e.speaker_role));
+  const vendorEvents = events.filter(e => isVendorSpeaker(e.speaker_role));
+
+  // Determine policy engine state
+  const policyDecisionsList = session?.decisions || session?.policy_decisions || decisions || [];
+  const latestPolicyDecision = policyDecisionsList.length > 0
+    ? policyDecisionsList[policyDecisionsList.length - 1]
+    : null;
+
+  const policyAction = latestPolicyDecision?.decision || (
+    currentStatus === 'ACCEPTED' ? 'ACCEPT' :
+    isPendingGovState || isPendingVendorState ? 'ESCALATE' :
+    currentStatus === 'REJECTED' ? 'REJECT' : 'CONTINUE'
+  );
+
+  const policyRule = latestPolicyDecision?.rule_triggered || (
+    isPendingGovState ? 'GOV_MAX_PRICE_CEILING' :
+    isPendingVendorState ? 'VENDOR_MIN_PRICE_FLOOR' :
+    currentStatus === 'ACCEPTED' ? 'BUDGET_COMPLIANCE_CONVERGENCE' :
+    currentStatus === 'REJECTED' ? 'MAX_ROUNDS_DEADLOCK' :
+    'BILATERAL_ZONE_TOLERANCE'
+  );
 
   return (
-    <div className="enterprise-card p-5 space-y-5 animate-fade-in bg-[#fbfbfa]">
-      {/* Top Banner: Session Info & Status */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#e8e6df] pb-4">
-        <div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[10px] uppercase font-mono tracking-wider px-2 py-0.5 rounded bg-[#f3f2ec] text-slate-700 border border-[#e8e6df] font-semibold">
-              Session #{sessionId || '---'}
-            </span>
-            <span className="text-xs font-semibold text-slate-700">
-              Round: <strong className="font-mono text-slate-900">{session?.current_round ?? (events?.length ? Math.max(...events.map(e => e.round || 0)) : 0)}</strong>
-            </span>
-            {renderStatusBadge(session?.status)}
+    <div className="space-y-6 animate-fade-in text-slate-800">
+      {/* ========================================================================= */}
+      {/* 1. HEADER                                                                 */}
+      {/* ========================================================================= */}
+      <div className="enterprise-card p-5 bg-[#fbfbfa] border border-[#e8e6df] shadow-sm">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded bg-slate-900 text-white shadow-xs">
+                NEG-{sessionId || '---'}
+              </span>
+              <span className="text-xs font-semibold text-slate-600 bg-[#f0eee6] border border-[#e0ddd2] px-2.5 py-0.5 rounded-full">
+                Round <strong className="font-mono text-slate-900">{currentRound}</strong>
+              </span>
+              {renderStatusBadge(session?.status)}
+            </div>
+
+            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <span>{session?.pr_title || 'Autonomous Bilateral Sourcing Order'}</span>
+            </h2>
+
+            <div className="text-xs text-slate-500 flex items-center gap-2 flex-wrap">
+              <span>Vendor Counterparty:</span>
+              <strong className="text-slate-800 font-medium">{session?.vendor_name || 'Qualified Vendor'}</strong>
+              <span className="text-slate-300">•</span>
+              <span>Session #{sessionId}</span>
+            </div>
           </div>
 
-          <h3 className="text-base font-bold text-slate-900 mt-1">
-            {session?.pr_title || 'Autonomous Procurement Negotiation'}
-          </h3>
-          <p className="text-xs text-slate-500">
-            Counterparty: <strong className="text-slate-800">{session?.vendor_name || 'Qualified Vendor'}</strong>
-          </p>
+          {/* Current Settlement Terms */}
+          <div className="flex items-center gap-3 bg-white border border-[#e0ddd2] px-4 py-2.5 rounded-xl shadow-xs shrink-0">
+            <div className="text-right">
+              <span className="text-[10px] uppercase tracking-wider text-slate-500 font-mono block font-semibold">
+                Current Offer
+              </span>
+              <span className="text-base font-extrabold font-mono text-slate-900">
+                {currentPrice !== null && currentPrice !== undefined
+                  ? `$${Number(currentPrice).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+                  : '---'}
+              </span>
+            </div>
+
+            <div className="w-[1px] h-7 bg-[#e8e6df]" />
+
+            <div className="text-right">
+              <span className="text-[10px] uppercase tracking-wider text-slate-500 font-mono block font-semibold">
+                Delivery SLA
+              </span>
+              <span className="text-sm font-bold font-mono text-blue-700">
+                {currentDays !== null && currentDays !== undefined
+                  ? `${currentDays} days`
+                  : '---'}
+              </span>
+            </div>
+          </div>
         </div>
 
-        {/* Current Settlement Terms (PUBLIC ONLY) */}
-        <div className="flex items-center gap-3 bg-[#f5f4f0] border border-[#e8e6df] px-3.5 py-2 rounded-lg">
-          <div className="text-right">
-            <span className="text-[10px] uppercase tracking-wider text-slate-500 font-mono block">
-              Current Offer
-            </span>
-            <span className="text-sm font-bold font-mono text-slate-900">
-              {currentPrice !== null && currentPrice !== undefined
-                ? `$${Number(currentPrice).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
-                : '---'}
-            </span>
-          </div>
-
-          <div className="w-[1px] h-6 bg-[#d8d5ca]" />
-
-          <div className="text-right">
-            <span className="text-[10px] uppercase tracking-wider text-slate-500 font-mono block">
-              Delivery
-            </span>
-            <span className="text-xs font-semibold font-mono text-slate-800">
-              {currentDays !== null && currentDays !== undefined
-                ? `${currentDays} days`
-                : '---'}
+        {/* STRICT PRIVACY STRATEGY BANNER (OWNER ROLE ONLY) */}
+        {isGovUser && govState && (
+          <div className="mt-3 pt-3 border-t border-[#f0eee6] flex items-center justify-between flex-wrap gap-2 text-[11px] text-slate-600">
+            <div className="flex items-center gap-2">
+              <Lock className="w-3.5 h-3.5 text-blue-600" />
+              <span className="font-semibold text-blue-900 uppercase font-mono tracking-wider text-[10px]">
+                Government Private Parameters (Protected):
+              </span>
+              <span>Target: <strong className="font-mono text-slate-900">${Number(govState.target_price || 0).toLocaleString()}</strong></span>
+              <span className="text-slate-300">•</span>
+              <span>Budget Ceiling: <strong className="font-mono text-slate-900">${Number(govState.max_authorized_price || 0).toLocaleString()}</strong></span>
+            </div>
+            <span className="text-[10px] italic text-slate-500 hidden sm:inline">
+              Never disclosed to vendor
             </span>
           </div>
-        </div>
+        )}
+
+        {isVendorUser && vendorState && (
+          <div className="mt-3 pt-3 border-t border-[#f0eee6] flex items-center justify-between flex-wrap gap-2 text-[11px] text-slate-600">
+            <div className="flex items-center gap-2">
+              <Lock className="w-3.5 h-3.5 text-purple-600" />
+              <span className="font-semibold text-purple-900 uppercase font-mono tracking-wider text-[10px]">
+                Vendor Commercial Parameters (Protected):
+              </span>
+              <span>Target: <strong className="font-mono text-slate-900">${Number(vendorState.target_price || 0).toLocaleString()}</strong></span>
+              <span className="text-slate-300">•</span>
+              <span>Minimum Floor: <strong className="font-mono text-slate-900">${Number(vendorState.absolute_minimum_price || 0).toLocaleString()}</strong></span>
+            </div>
+            <span className="text-[10px] italic text-slate-500 hidden sm:inline">
+              Never disclosed to government
+            </span>
+          </div>
+        )}
       </div>
 
-      {/* Status Messages */}
+      {/* Notifications / Alerts */}
       {error && (
-        <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center justify-between">
+        <div className="p-3.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
           <span>{error}</span>
-          <button type="button" onClick={() => setError('')} className="text-rose-500 hover:text-rose-700">
-            <X className="w-3.5 h-3.5" />
-          </button>
         </div>
       )}
 
       {successMsg && (
-        <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center justify-between">
+        <div className="p-3.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
           <span>{successMsg}</span>
-          <button type="button" onClick={() => setSuccessMsg('')} className="text-emerald-500 hover:text-emerald-700">
-            <X className="w-3.5 h-3.5" />
-          </button>
         </div>
       )}
 
-      {/* ESCALATION CARD: Displayed when role-appropriate escalation requires human action */}
+      {/* ========================================================================= */}
+      {/* PROMINENT ESCALATION CARD (Between panels when pending approval)           */}
+      {/* ========================================================================= */}
       {isGovUser && isPendingGovState && (
-        <div className="p-4 rounded-lg bg-amber-50/80 border-2 border-amber-300 space-y-3 shadow-sm">
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex items-start gap-2.5">
-              <div className="w-7 h-7 rounded-md bg-amber-600 text-white flex items-center justify-center shrink-0 mt-0.5">
-                <AlertTriangle className="w-4 h-4" />
+        <div className="p-5 rounded-xl bg-gradient-to-br from-amber-50 to-orange-50/60 border-2 border-amber-400 shadow-md space-y-4 animate-fade-in">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-lg bg-amber-600 text-white flex items-center justify-center shrink-0 shadow-sm mt-0.5">
+                <AlertTriangle className="w-5 h-5" />
               </div>
               <div>
-                <span className="text-[10px] uppercase font-mono font-bold tracking-wider text-amber-800 block">
-                  Government Authority Escalation
-                </span>
-                <h4 className="text-sm font-bold text-amber-950">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] uppercase font-mono font-bold tracking-wider px-2 py-0.5 rounded bg-amber-200/80 text-amber-900 border border-amber-300">
+                    Human Supervisory Intervention Required
+                  </span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white text-slate-700 font-bold border border-amber-300">
+                    Rule: {relevantEscalation?.role === 'GOVERNMENT' ? 'GOV_MAX_PRICE_CEILING' : 'GOV_AUTHORITY_THRESHOLD'}
+                  </span>
+                </div>
+                <h3 className="text-base font-bold text-amber-950 mt-1">
                   Algorithmic Authority Limit Reached
-                </h4>
-                <p className="text-xs text-amber-900 mt-1 leading-relaxed">
-                  {relevantEscalation?.reason || 'Vendor proposed price or delivery parameters exceed standard algorithmic spending authority. Supervisory intervention is required to proceed.'}
+                </h3>
+                <p className="text-xs text-amber-900 mt-1 leading-relaxed max-w-2xl">
+                  {relevantEscalation?.reason || 'Vendor proposal exceeds the autonomous pricing ceiling. Supervisory review is required to approve an exception, counteroffer, or decline.'}
                 </p>
               </div>
             </div>
 
-            <div className="shrink-0 text-right">
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-200 text-amber-900 font-bold border border-amber-300">
-                Rule: {relevantEscalation?.role === 'GOVERNMENT' ? 'GOV_MAX_PRICE_CEILING' : 'GOV_AUTHORITY_THRESHOLD'}
-              </span>
+            <div className="text-right shrink-0 bg-white/90 border border-amber-300 px-3 py-2 rounded-lg shadow-2xs">
+              <span className="text-[10px] uppercase font-mono text-slate-500 block">Proposal Under Review</span>
+              <strong className="font-mono text-sm text-slate-900 block">
+                ${Number(currentPrice || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              </strong>
+              <span className="text-[10px] font-mono text-slate-600">{currentDays || '--'} delivery days</span>
             </div>
           </div>
 
-          <div className="pt-2 border-t border-amber-200/80 flex items-center justify-between flex-wrap gap-3">
-            <div className="text-xs text-amber-900">
-              Current Public Proposal: <strong className="font-mono">${Number(currentPrice || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong> ({currentDays || '--'} days)
+          <div className="pt-3 border-t border-amber-300/80 flex items-center justify-between flex-wrap gap-3">
+            <div className="text-xs font-semibold text-amber-950">
+              Select an executive action to resolve this escalation:
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2.5 flex-wrap">
               <button
                 type="button"
                 disabled={actionLoading}
                 onClick={() => handleGovAction('APPROVE')}
-                className="btn-primary bg-emerald-600 hover:bg-emerald-700 text-xs py-1.5 px-3 shadow-sm"
+                className="btn-primary bg-emerald-600 hover:bg-emerald-700 text-xs py-2 px-4 shadow-sm flex items-center gap-1.5 cursor-pointer font-bold"
               >
-                <CheckCircle2 className="w-3.5 h-3.5" />
+                <CheckCircle2 className="w-4 h-4" />
                 <span>Approve &amp; Resume</span>
               </button>
 
@@ -406,9 +425,9 @@ export default function NegotiationPanel({
                   setCounterDays(currentDays ? String(currentDays) : '');
                   setShowCounterModal(true);
                 }}
-                className="btn-secondary bg-white hover:bg-amber-100/50 text-amber-900 border-amber-300 text-xs py-1.5 px-3"
+                className="btn-secondary bg-white hover:bg-amber-100 text-amber-950 border-amber-400 text-xs py-2 px-4 flex items-center gap-1.5 cursor-pointer font-bold shadow-2xs"
               >
-                <Send className="w-3.5 h-3.5 text-amber-700" />
+                <Send className="w-4 h-4 text-amber-700" />
                 <span>Manual Counteroffer</span>
               </button>
 
@@ -416,9 +435,9 @@ export default function NegotiationPanel({
                 type="button"
                 disabled={actionLoading}
                 onClick={() => handleGovAction('REJECT')}
-                className="btn-danger text-xs py-1.5 px-3"
+                className="btn-danger text-xs py-2 px-4 flex items-center gap-1.5 cursor-pointer font-bold"
               >
-                <XCircle className="w-3.5 h-3.5" />
+                <XCircle className="w-4 h-4" />
                 <span>Reject</span>
               </button>
             </div>
@@ -426,10 +445,10 @@ export default function NegotiationPanel({
         </div>
       )}
 
-      {/* Informational Card for Government when Vendor Escalation is Pending */}
+      {/* Informational for Government when Vendor Escalation is Pending */}
       {isGovUser && isPendingVendorState && (
-        <div className="p-4 rounded-lg bg-purple-50/80 border-2 border-purple-200 text-purple-900 flex items-start gap-3 shadow-sm">
-          <div className="w-7 h-7 rounded-md bg-purple-600 text-white flex items-center justify-center shrink-0 mt-0.5">
+        <div className="p-4 rounded-xl bg-purple-50/90 border-2 border-purple-200 text-purple-950 flex items-start gap-3 shadow-xs">
+          <div className="w-8 h-8 rounded-lg bg-purple-600 text-white flex items-center justify-center shrink-0 mt-0.5">
             <Clock className="w-4 h-4" />
           </div>
           <div>
@@ -437,55 +456,63 @@ export default function NegotiationPanel({
               Awaiting Counterparty Concession
             </span>
             <h4 className="text-sm font-bold text-purple-950">
-              Vendor Commercial Leadership Review
+              Vendor Commercial Leadership Review in Progress
             </h4>
             <p className="text-xs text-purple-800 mt-1 leading-relaxed">
-              The vendor sales agent has escalated government terms to vendor corporate management for margin concession approval. The negotiation is paused awaiting their review.
+              The vendor sales agent has paused negotiations and escalated government terms to vendor corporate management for margin concession approval. The negotiation is paused awaiting their review.
             </p>
           </div>
         </div>
       )}
 
+      {/* Prominent Vendor Escalation Card */}
       {isVendorUser && isPendingVendorState && (
-        <div className="p-4 rounded-lg bg-purple-50/80 border-2 border-purple-300 space-y-3 shadow-sm">
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex items-start gap-2.5">
-              <div className="w-7 h-7 rounded-md bg-purple-600 text-white flex items-center justify-center shrink-0 mt-0.5">
-                <User className="w-4 h-4" />
+        <div className="p-5 rounded-xl bg-gradient-to-br from-purple-50 to-indigo-50/60 border-2 border-purple-400 shadow-md space-y-4 animate-fade-in">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-lg bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-sm mt-0.5">
+                <User className="w-5 h-5" />
               </div>
               <div>
-                <span className="text-[10px] uppercase font-mono font-bold tracking-wider text-purple-800 block">
-                  Vendor Commercial Escalation
-                </span>
-                <h4 className="text-sm font-bold text-purple-950">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] uppercase font-mono font-bold tracking-wider px-2 py-0.5 rounded bg-purple-200 text-purple-900 border border-purple-300">
+                    Vendor Commercial Authority Review
+                  </span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white text-slate-700 font-bold border border-purple-300">
+                    Rule: {relevantEscalation?.role === 'VENDOR' ? 'VENDOR_MIN_PRICE_FLOOR' : 'COMMERCIAL_BOUNDARY'}
+                  </span>
+                </div>
+                <h3 className="text-base font-bold text-purple-950 mt-1">
                   Commercial Margin Boundary Reached
-                </h4>
-                <p className="text-xs text-purple-900 mt-1 leading-relaxed">
+                </h3>
+                <p className="text-xs text-purple-900 mt-1 leading-relaxed max-w-2xl">
                   {relevantEscalation?.reason || 'Government proposal is below your configured minimum floor. Executive commercial approval is required to concede, counteroffer, or decline.'}
                 </p>
               </div>
             </div>
 
-            <div className="shrink-0 text-right">
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-200 text-purple-900 font-bold border border-purple-300">
-                Rule: {relevantEscalation?.role === 'VENDOR' ? 'VENDOR_MIN_PRICE_FLOOR' : 'VENDOR_COMMERCIAL_BOUNDARY'}
-              </span>
+            <div className="text-right shrink-0 bg-white/90 border border-purple-300 px-3 py-2 rounded-lg shadow-2xs">
+              <span className="text-[10px] uppercase font-mono text-slate-500 block">Government Offer</span>
+              <strong className="font-mono text-sm text-slate-900 block">
+                ${Number(currentPrice || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              </strong>
+              <span className="text-[10px] font-mono text-slate-600">{currentDays || '--'} delivery days</span>
             </div>
           </div>
 
-          <div className="pt-2 border-t border-purple-200/80 flex items-center justify-between flex-wrap gap-3">
-            <div className="text-xs text-purple-900">
-              Government Offer: <strong className="font-mono">${Number(currentPrice || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong> ({currentDays || '--'} days)
+          <div className="pt-3 border-t border-purple-300/80 flex items-center justify-between flex-wrap gap-3">
+            <div className="text-xs font-semibold text-purple-950">
+              Commercial executive decision options:
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2.5 flex-wrap">
               <button
                 type="button"
                 disabled={actionLoading}
                 onClick={() => handleVendorAction('APPROVE')}
-                className="btn-primary bg-purple-600 hover:bg-purple-700 text-xs py-1.5 px-3 shadow-sm"
+                className="btn-primary bg-purple-600 hover:bg-purple-700 text-xs py-2 px-4 shadow-sm flex items-center gap-1.5 cursor-pointer font-bold"
               >
-                <CheckCircle2 className="w-3.5 h-3.5" />
+                <CheckCircle2 className="w-4 h-4" />
                 <span>Approve &amp; Resume</span>
               </button>
 
@@ -497,9 +524,9 @@ export default function NegotiationPanel({
                   setCounterDays(currentDays ? String(currentDays) : '');
                   setShowCounterModal(true);
                 }}
-                className="btn-secondary bg-white hover:bg-purple-100/50 text-purple-900 border-purple-300 text-xs py-1.5 px-3"
+                className="btn-secondary bg-white hover:bg-purple-100 text-purple-950 border-purple-400 text-xs py-2 px-4 flex items-center gap-1.5 cursor-pointer font-bold shadow-2xs"
               >
-                <Send className="w-3.5 h-3.5 text-purple-700" />
+                <Send className="w-4 h-4 text-purple-700" />
                 <span>Manual Counteroffer</span>
               </button>
 
@@ -507,9 +534,9 @@ export default function NegotiationPanel({
                 type="button"
                 disabled={actionLoading}
                 onClick={() => handleVendorAction('REJECT')}
-                className="btn-danger text-xs py-1.5 px-3"
+                className="btn-danger text-xs py-2 px-4 flex items-center gap-1.5 cursor-pointer font-bold"
               >
-                <XCircle className="w-3.5 h-3.5" />
+                <XCircle className="w-4 h-4" />
                 <span>Reject</span>
               </button>
             </div>
@@ -517,140 +544,508 @@ export default function NegotiationPanel({
         </div>
       )}
 
-      {/* Informational Card for Vendor when Government Escalation is Pending */}
+      {/* Informational for Vendor when Government Escalation is Pending */}
       {isVendorUser && isPendingGovState && (
-        <div className="p-4 rounded-lg bg-amber-50/80 border-2 border-amber-200 text-amber-900 flex items-start gap-3 shadow-sm">
-          <div className="w-7 h-7 rounded-md bg-amber-600 text-white flex items-center justify-center shrink-0 mt-0.5">
-            <AlertTriangle className="w-4 h-4" />
+        <div className="p-4 rounded-xl bg-amber-50/90 border-2 border-amber-200 text-amber-950 flex items-start gap-3 shadow-xs">
+          <div className="w-8 h-8 rounded-lg bg-amber-600 text-white flex items-center justify-center shrink-0 mt-0.5">
+            <Clock className="w-4 h-4" />
           </div>
           <div>
-            <span className="text-[10px] uppercase font-mono font-bold tracking-wider text-amber-800 block">
-              Awaiting Procurement Approval
+            <span className="text-[10px] uppercase font-mono font-bold tracking-wider text-amber-700 block">
+              Awaiting Government Approval
             </span>
             <h4 className="text-sm font-bold text-amber-950">
-              Government Supervisory Authority Review
+              Government Procurement Authority Review in Progress
             </h4>
-            <p className="text-xs text-amber-900 mt-1 leading-relaxed">
-              Your proposal reached algorithmic government spending boundaries and has been escalated to human procurement officers for formal exception approval.
+            <p className="text-xs text-amber-800 mt-1 leading-relaxed">
+              Vendor terms have been escalated to the government procurement supervisor for budget ceiling exception approval. Negotiation is currently paused.
             </p>
           </div>
         </div>
       )}
 
-      {/* Timeline Section */}
+      {/* ========================================================================= */}
+      {/* 2. MAIN NEGOTIATION AREA: TWO AUTONOMOUS AGENTS SIDE-BY-SIDE              */}
+      {/* ========================================================================= */}
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h4 className="text-xs font-bold text-slate-900 uppercase font-mono tracking-wider flex items-center gap-1.5">
-            <MessageSquare className="w-3.5 h-3.5 text-slate-500" />
-            Bilateral Negotiation Transcript ({events.length} events)
-          </h4>
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center gap-2">
+            <Bot className="w-4 h-4 text-slate-700" />
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 font-mono">
+              Bilateral Autonomous Agent Arena
+            </h3>
+          </div>
+          <span className="text-[11px] font-mono text-slate-500">
+            {events.length} Public Protocol Messages
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          {/* --------------------------------------------------------------------- */}
+          {/* LEFT COLUMN: Government Agent                                         */}
+          {/* --------------------------------------------------------------------- */}
+          <div className="enterprise-card overflow-hidden border border-blue-200/80 bg-[#f8fafc] flex flex-col shadow-xs">
+            {/* Gov Agent Header */}
+            <div className="bg-gradient-to-r from-blue-950 via-blue-900 to-slate-900 text-white p-3.5 flex items-center justify-between border-b border-blue-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs">
+                  <Bot className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <h4 className="text-xs font-bold text-white tracking-wide">Government Agent</h4>
+                    <span className="text-[9px] px-1.5 py-0.2 rounded font-mono font-bold bg-blue-500/30 text-blue-200 border border-blue-400/30">
+                      BUYER
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-blue-200/80 font-mono">
+                    Autonomous Public Procurement Buyer
+                  </p>
+                </div>
+              </div>
+
+              <div className="text-right">
+                <span className="text-[9px] uppercase font-mono tracking-widest text-blue-300 block font-semibold">
+                  Offers &amp; Counters
+                </span>
+                <span className="text-xs font-mono font-bold text-white">
+                  {govEvents.length} Actions
+                </span>
+              </div>
+            </div>
+
+            {/* Gov Agent Offers Stream */}
+            <div className="p-4 space-y-3 flex-1 overflow-y-auto max-h-[560px]">
+              {govEvents.length === 0 ? (
+                <div className="py-12 text-center text-xs text-slate-400 space-y-2">
+                  <Bot className="w-8 h-8 text-blue-300 mx-auto opacity-50" />
+                  <p>Awaiting opening government proposal...</p>
+                </div>
+              ) : (
+                govEvents.map((ev, idx) => {
+                  const isHuman = ev.speaker_role === 'GOV_HUMAN';
+                  const isAccept = ev.event_type === 'ACCEPT';
+                  const isReject = ev.event_type === 'REJECT';
+
+                  return (
+                    <div
+                      key={ev.id || idx}
+                      className={`p-3.5 rounded-xl border transition-all ${
+                        isHuman
+                          ? 'bg-amber-50/70 border-amber-300 shadow-xs'
+                          : isAccept
+                          ? 'bg-emerald-50/70 border-emerald-300 shadow-xs'
+                          : isReject
+                          ? 'bg-rose-50/70 border-rose-300 shadow-xs'
+                          : 'bg-white border-blue-200 shadow-xs hover:border-blue-300'
+                      }`}
+                    >
+                      {/* Card Top Meta */}
+                      <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-900 border border-blue-200">
+                            Round {ev.round ?? 0}
+                          </span>
+                          <span className={`text-[9px] font-mono px-2 py-0.5 rounded font-bold border ${
+                            isHuman
+                              ? 'bg-amber-100 text-amber-900 border-amber-300'
+                              : isAccept
+                              ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                              : isReject
+                              ? 'bg-rose-100 text-rose-900 border-rose-300'
+                              : 'bg-slate-100 text-slate-800 border-slate-200'
+                          }`}>
+                            {isHuman ? 'HUMAN OVERRIDE' : ev.event_type || 'OFFER'}
+                          </span>
+                        </div>
+
+                        {ev.created_at && (
+                          <span className="text-[10px] font-mono text-slate-400">
+                            {new Date(ev.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Terms Chips */}
+                      <div className="pt-2 flex items-center gap-2 flex-wrap">
+                        {ev.price !== null && ev.price !== undefined && (
+                          <span className="inline-flex items-center gap-1 font-mono text-xs font-bold px-2.5 py-1 rounded-md bg-blue-50 text-blue-900 border border-blue-200">
+                            <DollarSign className="w-3.5 h-3.5 text-blue-600" />
+                            ${Number(ev.price).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                          </span>
+                        )}
+                        {ev.delivery_days !== null && ev.delivery_days !== undefined && (
+                          <span className="inline-flex items-center gap-1 font-mono text-xs font-semibold px-2.5 py-1 rounded-md bg-slate-50 text-slate-700 border border-slate-200">
+                            <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                            {ev.delivery_days} days SLA
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Public Message Statement */}
+                      <div className="pt-2">
+                        <p className="text-xs text-slate-700 leading-relaxed italic bg-[#fcfbf9] p-2.5 rounded-lg border border-[#f0eee6]">
+                          &ldquo;{ev.message}&rdquo;
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* --------------------------------------------------------------------- */}
+          {/* RIGHT COLUMN: Vendor Agent                                            */}
+          {/* --------------------------------------------------------------------- */}
+          <div className="enterprise-card overflow-hidden border border-purple-200/80 bg-[#faf8fc] flex flex-col shadow-xs">
+            {/* Vendor Agent Header */}
+            <div className="bg-gradient-to-r from-purple-950 via-purple-900 to-indigo-950 text-white p-3.5 flex items-center justify-between border-b border-purple-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-purple-600 text-white flex items-center justify-center shadow-xs">
+                  <Bot className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <h4 className="text-xs font-bold text-white tracking-wide">Vendor Agent</h4>
+                    <span className="text-[9px] px-1.5 py-0.2 rounded font-mono font-bold bg-purple-500/30 text-purple-200 border border-purple-400/30">
+                      SELLER
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-purple-200/80 font-mono">
+                    Autonomous Supplier Sales AI
+                  </p>
+                </div>
+              </div>
+
+              <div className="text-right">
+                <span className="text-[9px] uppercase font-mono tracking-widest text-purple-300 block font-semibold">
+                  Offers &amp; Counters
+                </span>
+                <span className="text-xs font-mono font-bold text-white">
+                  {vendorEvents.length} Actions
+                </span>
+              </div>
+            </div>
+
+            {/* Vendor Agent Offers Stream */}
+            <div className="p-4 space-y-3 flex-1 overflow-y-auto max-h-[560px]">
+              {vendorEvents.length === 0 ? (
+                <div className="py-12 text-center text-xs text-slate-400 space-y-2">
+                  <Bot className="w-8 h-8 text-purple-300 mx-auto opacity-50" />
+                  <p>Awaiting vendor counterproposal...</p>
+                </div>
+              ) : (
+                vendorEvents.map((ev, idx) => {
+                  const isHuman = ev.speaker_role === 'VENDOR_HUMAN';
+                  const isAccept = ev.event_type === 'ACCEPT';
+                  const isReject = ev.event_type === 'REJECT';
+
+                  return (
+                    <div
+                      key={ev.id || idx}
+                      className={`p-3.5 rounded-xl border transition-all ${
+                        isHuman
+                          ? 'bg-emerald-50/70 border-emerald-300 shadow-xs'
+                          : isAccept
+                          ? 'bg-emerald-50/70 border-emerald-300 shadow-xs'
+                          : isReject
+                          ? 'bg-rose-50/70 border-rose-300 shadow-xs'
+                          : 'bg-white border-purple-200 shadow-xs hover:border-purple-300'
+                      }`}
+                    >
+                      {/* Card Top Meta */}
+                      <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-purple-100 text-purple-900 border border-purple-200">
+                            Round {ev.round ?? 0}
+                          </span>
+                          <span className={`text-[9px] font-mono px-2 py-0.5 rounded font-bold border ${
+                            isHuman
+                              ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                              : isAccept
+                              ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                              : isReject
+                              ? 'bg-rose-100 text-rose-900 border-rose-300'
+                              : 'bg-slate-100 text-slate-800 border-slate-200'
+                          }`}>
+                            {isHuman ? 'VENDOR HUMAN' : ev.event_type || 'OFFER'}
+                          </span>
+                        </div>
+
+                        {ev.created_at && (
+                          <span className="text-[10px] font-mono text-slate-400">
+                            {new Date(ev.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Terms Chips */}
+                      <div className="pt-2 flex items-center gap-2 flex-wrap">
+                        {ev.price !== null && ev.price !== undefined && (
+                          <span className="inline-flex items-center gap-1 font-mono text-xs font-bold px-2.5 py-1 rounded-md bg-purple-50 text-purple-900 border border-purple-200">
+                            <DollarSign className="w-3.5 h-3.5 text-purple-600" />
+                            ${Number(ev.price).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                          </span>
+                        )}
+                        {ev.delivery_days !== null && ev.delivery_days !== undefined && (
+                          <span className="inline-flex items-center gap-1 font-mono text-xs font-semibold px-2.5 py-1 rounded-md bg-slate-50 text-slate-700 border border-slate-200">
+                            <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                            {ev.delivery_days} days SLA
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Public Message Statement */}
+                      <div className="pt-2">
+                        <p className="text-xs text-slate-700 leading-relaxed italic bg-[#fcfbf9] p-2.5 rounded-lg border border-[#f0eee6]">
+                          &ldquo;{ev.message}&rdquo;
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 3. CENTER / BOTTOM: DETERMINISTIC POLICY ENGINE                           */}
+      {/* ========================================================================= */}
+      <div className="enterprise-card p-4 bg-white border border-[#e8e6df] shadow-xs space-y-3">
+        <div className="flex items-center justify-between pb-2 border-b border-[#f0eee6]">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md bg-slate-900 text-white flex items-center justify-center">
+              <Shield className="w-3.5 h-3.5" />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider font-mono">
+                Policy Engine Evaluation
+              </h4>
+              <p className="text-[10px] text-slate-500">
+                Deterministic State Machine &amp; Threshold Verification
+              </p>
+            </div>
+          </div>
 
           <div className="flex items-center gap-2">
-            {/* Quick manual counter button for active sessions */}
-            {['NEGOTIATING', 'RESUMED'].includes(currentStatus) && (
-              <button
-                type="button"
-                onClick={() => {
-                  setCounterPrice(currentPrice ? String(currentPrice) : '');
-                  setCounterDays(currentDays ? String(currentDays) : '');
-                  setShowCounterModal(true);
-                }}
-                className="text-[11px] font-medium text-slate-600 hover:text-slate-900 bg-white border border-[#d8d5ca] px-2.5 py-1 rounded-md flex items-center gap-1"
-              >
-                <Send className="w-3 h-3 text-slate-500" />
-                <span>Submit Counteroffer</span>
-              </button>
-            )}
-
-            {onRefresh && (
-              <button
-                type="button"
-                onClick={onRefresh}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded"
-                title="Refresh transcript"
-              >
-                <RotateCcw className="w-3 h-3" />
-              </button>
-            )}
+            <span className="text-[10px] font-mono text-slate-500 uppercase">Current Directive:</span>
+            <span className={`text-xs font-mono font-bold px-2.5 py-1 rounded-md border ${
+              policyAction === 'ACCEPT'
+                ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                : policyAction === 'ESCALATE'
+                ? 'bg-amber-100 text-amber-900 border-amber-300'
+                : policyAction === 'REJECT'
+                ? 'bg-rose-100 text-rose-900 border-rose-300'
+                : 'bg-blue-100 text-blue-900 border-blue-300'
+            }`}>
+              {policyAction}
+            </span>
           </div>
         </div>
 
-        {events.length === 0 ? (
-          <div className="p-8 text-center text-xs text-slate-500 border border-dashed border-[#d8d5ca] rounded-lg bg-[#fbfbfa]">
-            <Bot className="w-6 h-6 text-slate-400 mx-auto mb-2" />
-            No negotiation events recorded for this session yet.
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+          <div className="p-2.5 rounded-lg bg-[#fbfbfa] border border-[#e8e6df]">
+            <span className="text-[10px] font-mono text-slate-500 uppercase block">Rule Evaluated</span>
+            <strong className="font-mono text-slate-900 text-xs mt-0.5 block truncate">
+              {policyRule}
+            </strong>
           </div>
-        ) : (
-          <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
-            {events.map((ev, idx) => {
-              const cfg = getSpeakerConfig(ev.speaker_role);
-              const SpeakerIcon = cfg.icon;
-              const hasPrice = ev.price !== null && ev.price !== undefined;
-              const hasDays = ev.delivery_days !== null && ev.delivery_days !== undefined;
 
-              return (
-                <div
-                  key={ev.id || idx}
-                  className={`p-3.5 rounded-lg border text-xs space-y-2 transition-all ${cfg.bubbleBg}`}
-                >
-                  {/* Speaker Header */}
-                  <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 ${cfg.avatarBg}`}>
-                        <SpeakerIcon className="w-3 h-3" />
-                      </div>
-                      <div className="flex items-center gap-1.5 truncate">
-                        <span className="font-bold text-slate-900">{cfg.label}</span>
-                        <span className={`text-[9px] px-1.5 py-0.2 rounded font-mono font-medium border ${cfg.badgeBg}`}>
-                          {ev.event_type || 'OFFER'}
-                        </span>
-                      </div>
-                    </div>
+          <div className="p-2.5 rounded-lg bg-[#fbfbfa] border border-[#e8e6df]">
+            <span className="text-[10px] font-mono text-slate-500 uppercase block">Settlement Parameter</span>
+            <strong className="font-mono text-slate-900 text-xs mt-0.5 block">
+              ${Number(currentPrice || 0).toLocaleString()} · {currentDays || '--'} Days
+            </strong>
+          </div>
 
-                    <div className="flex items-center gap-2 font-mono text-[10px] text-slate-500 shrink-0">
-                      <span>Round {ev.round ?? 0}</span>
-                      {ev.created_at && (
-                        <span>• {new Date(ev.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                      )}
-                    </div>
-                  </div>
+          <div className="p-2.5 rounded-lg bg-[#fbfbfa] border border-[#e8e6df]">
+            <span className="text-[10px] font-mono text-slate-500 uppercase block">Algorithmic Outcome</span>
+            <span className="text-xs text-slate-700 mt-0.5 block">
+              {policyAction === 'ACCEPT' && 'Terms converged within budget ceiling. Consensus approved.'}
+              {policyAction === 'ESCALATE' && 'Supervisory threshold crossed. Paused for human decision.'}
+              {policyAction === 'REJECT' && 'Terms violate non-negotiable boundaries. Terminated.'}
+              {policyAction === 'CONTINUE' && 'Counterproposal within standard variance. Round advanced.'}
+            </span>
+          </div>
+        </div>
 
-                  {/* Message body */}
-                  <p className="text-slate-700 leading-relaxed pl-7">
-                    {ev.message}
-                  </p>
-
-                  {/* Offer parameters pill (strictly public offer and days only) */}
-                  {(hasPrice || hasDays) && (
-                    <div className="pl-7 pt-1 flex items-center gap-2 flex-wrap">
-                      {hasPrice && (
-                        <span className="inline-flex items-center gap-1 font-mono text-[11px] font-bold px-2 py-0.5 rounded bg-white/80 border border-[#d8d5ca] text-slate-900">
-                          <DollarSign className="w-3 h-3 text-emerald-600" />
-                          ${Number(ev.price).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                        </span>
-                      )}
-                      {hasDays && (
-                        <span className="inline-flex items-center gap-1 font-mono text-[11px] px-2 py-0.5 rounded bg-white/80 border border-[#d8d5ca] text-slate-700">
-                          <Calendar className="w-3 h-3 text-blue-600" />
-                          {ev.delivery_days} days SLA
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+        {/* Historical Policy Decisions Table if present */}
+        {policyDecisionsList.length > 0 && (
+          <div className="mt-2 pt-2 border-t border-[#f0eee6] overflow-x-auto">
+            <table className="w-full text-left text-[11px] font-mono">
+              <thead>
+                <tr className="text-slate-400 border-b border-[#f0eee6]">
+                  <th className="pb-1">Round</th>
+                  <th className="pb-1">Role</th>
+                  <th className="pb-1">Evaluated Terms</th>
+                  <th className="pb-1">Rule Triggered</th>
+                  <th className="pb-1 text-right">Decision</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#f7f6f2]">
+                {policyDecisionsList.map((pd, i) => (
+                  <tr key={pd.id || i} className="text-slate-700">
+                    <td className="py-1 font-bold">Round {pd.round}</td>
+                    <td className="py-1">{pd.role}</td>
+                    <td className="py-1">${Number(pd.evaluated_price || 0).toLocaleString()} ({pd.evaluated_delivery_days}d)</td>
+                    <td className="py-1 text-slate-500 truncate max-w-[200px]">{pd.rule_triggered}</td>
+                    <td className="py-1 text-right font-bold">
+                      <span className={`px-1.5 py-0.2 rounded text-[10px] ${
+                        pd.decision === 'ACCEPT' ? 'bg-emerald-100 text-emerald-800' :
+                        pd.decision === 'ESCALATE' ? 'bg-amber-100 text-amber-800' :
+                        pd.decision === 'REJECT' ? 'bg-rose-100 text-rose-800' :
+                        'bg-blue-100 text-blue-800'
+                      }`}>
+                        {pd.decision}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
 
-      {/* MANUAL COUNTEROFFER MODAL */}
+      {/* ========================================================================= */}
+      {/* 4. BOTTOM: AUDIT TIMELINE                                                 */}
+      {/* ========================================================================= */}
+      <div className="enterprise-card p-4 bg-white border border-[#e8e6df] shadow-xs space-y-3">
+        <div className="flex items-center justify-between pb-2 border-b border-[#f0eee6]">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md bg-slate-800 text-white flex items-center justify-center">
+              <FileText className="w-3.5 h-3.5" />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider font-mono">
+                Audit Timeline &amp; Ledger
+              </h4>
+              <p className="text-[10px] text-slate-500">
+                Immutable chronology of all bilateral offers, policy triggers, and human interventions
+              </p>
+            </div>
+          </div>
+
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#f5f4f0] text-slate-600 border border-[#e8e6df]">
+            Tamper-Evident Ledger
+          </span>
+        </div>
+
+        {events.length === 0 ? (
+          <div className="py-6 text-center text-xs text-slate-400">
+            No events recorded in the audit ledger yet.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-[#e8e6df] text-[10px] font-mono text-slate-500 uppercase tracking-wider">
+                  <th className="pb-2"># / Round</th>
+                  <th className="pb-2">Speaker</th>
+                  <th className="pb-2">Event</th>
+                  <th className="pb-2">Price &amp; SLA</th>
+                  <th className="pb-2">Action / Justification Statement</th>
+                  <th className="pb-2 text-right">Time</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#f0eee6]">
+                {events.map((ev, index) => {
+                  const isGov = isGovSpeaker(ev.speaker_role);
+                  const isHuman = ev.speaker_role?.includes('HUMAN');
+                  const isAccept = ev.event_type === 'ACCEPT';
+                  const isReject = ev.event_type === 'REJECT';
+
+                  return (
+                    <tr key={ev.id || index} className="hover:bg-[#fcfbf9] transition-colors">
+                      <td className="py-2.5 font-mono text-[11px] font-bold text-slate-600 whitespace-nowrap">
+                        #{index + 1} · R{ev.round ?? 0}
+                      </td>
+
+                      <td className="py-2.5 whitespace-nowrap">
+                        <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full border ${
+                          isHuman
+                            ? 'bg-amber-50 text-amber-900 border-amber-300'
+                            : isGov
+                            ? 'bg-blue-50 text-blue-800 border-blue-200'
+                            : 'bg-purple-50 text-purple-800 border-purple-200'
+                        }`}>
+                          {isHuman ? <User className="w-3 h-3" /> : <Bot className="w-3 h-3" />}
+                          <span>{isHuman ? (isGov ? 'Human Gov' : 'Human Vendor') : (isGov ? 'Gov Agent' : 'Vendor Agent')}</span>
+                        </span>
+                      </td>
+
+                      <td className="py-2.5 whitespace-nowrap">
+                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold border ${
+                          isAccept
+                            ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                            : isReject
+                            ? 'bg-rose-100 text-rose-800 border-rose-300'
+                            : isHuman
+                            ? 'bg-amber-100 text-amber-800 border-amber-300'
+                            : 'bg-slate-100 text-slate-700 border-slate-200'
+                        }`}>
+                          {ev.event_type || 'OFFER'}
+                        </span>
+                      </td>
+
+                      <td className="py-2.5 whitespace-nowrap font-mono text-[11px]">
+                        {ev.price !== null && ev.price !== undefined ? (
+                          <strong className="text-slate-900 font-bold">
+                            ${Number(ev.price).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                          </strong>
+                        ) : (
+                          <span className="text-slate-400">---</span>
+                        )}
+                        {ev.delivery_days !== null && ev.delivery_days !== undefined && (
+                          <span className="text-slate-500 ml-1.5">({ev.delivery_days}d)</span>
+                        )}
+                      </td>
+
+                      <td className="py-2.5 text-xs text-slate-600 max-w-md truncate">
+                        {ev.message || '---'}
+                      </td>
+
+                      <td className="py-2.5 text-right font-mono text-[10px] text-slate-400 whitespace-nowrap">
+                        {ev.created_at
+                          ? new Date(ev.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                          : '---'}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Final Consensus Summary Bar */}
+        {currentStatus === 'ACCEPTED' && (
+          <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2 text-xs text-emerald-900 font-semibold">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>
+                Agreement Settlement: Final terms confirmed at <strong>${Number(currentPrice || 0).toLocaleString()}</strong> with <strong>{currentDays || '--'} delivery days SLA</strong>.
+              </span>
+            </div>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-200/80 text-emerald-950 font-bold">
+              Ready for Purchase Order
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* ========================================================================= */}
+      {/* MANUAL COUNTEROFFER MODAL                                                 */}
+      {/* ========================================================================= */}
       {showCounterModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="bg-white rounded-xl shadow-xl border border-[#d8d5ca] max-w-md w-full p-5 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-fade-in">
+          <div className="bg-white rounded-xl shadow-2xl border border-[#d8d5ca] max-w-md w-full p-5 space-y-4">
             <div className="flex items-center justify-between border-b border-[#e8e6df] pb-3">
               <div className="flex items-center gap-2">
-                <div className={`w-7 h-7 rounded-md flex items-center justify-center text-white ${isGovUser ? 'bg-amber-600' : 'bg-purple-600'}`}>
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-xs ${isGovUser ? 'bg-amber-600' : 'bg-purple-600'}`}>
                   <User className="w-4 h-4" />
                 </div>
                 <div>
@@ -658,20 +1053,20 @@ export default function NegotiationPanel({
                     Submit Manual Counteroffer
                   </h3>
                   <span className="text-[10px] font-mono text-slate-500">
-                    {isGovUser ? 'Government Procurement Authority' : 'Vendor Commercial Authority'}
+                    {isGovUser ? 'Government Procurement Officer' : 'Vendor Commercial Representative'}
                   </span>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setShowCounterModal(false)}
-                className="text-slate-400 hover:text-slate-600 p-1"
+                className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleManualCounterSubmit} className="space-y-3.5">
+            <form onSubmit={handleManualCounterSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 uppercase font-mono mb-1">
@@ -685,8 +1080,8 @@ export default function NegotiationPanel({
                       required
                       value={counterPrice}
                       onChange={(e) => setCounterPrice(e.target.value)}
-                      placeholder="e.g. 15000.00"
-                      className="w-full pl-7 pr-3 py-1.5 text-xs bg-[#fbfbfa] border border-[#d8d5ca] rounded-lg text-slate-900 focus:outline-none focus:border-blue-600 font-mono font-bold"
+                      placeholder="e.g. 15500.00"
+                      className="w-full pl-7 pr-3 py-2 text-xs bg-[#fbfbfa] border border-[#d8d5ca] rounded-lg text-slate-900 focus:outline-none focus:border-blue-600 font-mono font-bold"
                     />
                   </div>
                 </div>
@@ -703,7 +1098,7 @@ export default function NegotiationPanel({
                       value={counterDays}
                       onChange={(e) => setCounterDays(e.target.value)}
                       placeholder="e.g. 10"
-                      className="w-full pl-7 pr-3 py-1.5 text-xs bg-[#fbfbfa] border border-[#d8d5ca] rounded-lg text-slate-900 focus:outline-none focus:border-blue-600 font-mono font-bold"
+                      className="w-full pl-7 pr-3 py-2 text-xs bg-[#fbfbfa] border border-[#d8d5ca] rounded-lg text-slate-900 focus:outline-none focus:border-blue-600 font-mono font-bold"
                     />
                   </div>
                 </div>
@@ -711,13 +1106,13 @@ export default function NegotiationPanel({
 
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 uppercase font-mono mb-1">
-                  Optional Commercial Justification / Message
+                  Public Commercial Rationale / Justification
                 </label>
                 <textarea
                   rows="3"
                   value={counterMessage}
                   onChange={(e) => setCounterMessage(e.target.value)}
-                  placeholder="Explain terms, volume discount conditions, or scheduling adjustments..."
+                  placeholder="State terms, quantity expectations, or operational constraints..."
                   className="w-full px-3 py-2 text-xs bg-[#fbfbfa] border border-[#d8d5ca] rounded-lg text-slate-900 focus:outline-none focus:border-blue-600 placeholder-slate-400"
                 />
               </div>
@@ -726,14 +1121,16 @@ export default function NegotiationPanel({
                 <button
                   type="button"
                   onClick={() => setShowCounterModal(false)}
-                  className="btn-secondary text-xs py-1.5 px-3"
+                  className="btn-secondary text-xs py-2 px-3.5 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={actionLoading}
-                  className="btn-primary text-xs py-1.5 px-4 bg-blue-600 hover:bg-blue-700"
+                  className={`btn-primary text-xs py-2 px-4 flex items-center gap-1.5 cursor-pointer ${
+                    isGovUser ? 'bg-amber-600 hover:bg-amber-700' : 'bg-purple-600 hover:bg-purple-700'
+                  }`}
                 >
                   <Send className="w-3.5 h-3.5" />
                   <span>{actionLoading ? 'Submitting...' : 'Submit Counteroffer'}</span>

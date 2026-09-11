@@ -169,7 +169,21 @@ export default function VendorNegotiations({
                       </div>
 
                       <div className="text-right shrink-0">
-                        <span className="text-[9px] font-mono px-1.5 py-0.2 rounded border bg-purple-50 text-purple-700 border-purple-200 font-semibold">
+                        <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded border font-semibold ${
+                          s.status === 'ACCEPTED' || s.status === 'COMPLETED'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                            : s.status === 'PENDING_VENDOR_APPROVAL'
+                            ? 'bg-purple-50 text-purple-800 border-purple-300'
+                            : ['PENDING_GOV_APPROVAL', 'PENDING_APPROVAL', 'ESCALATED'].includes(s.status)
+                            ? 'bg-amber-50 text-amber-900 border-amber-400'
+                            : s.status === 'REJECTED'
+                            ? 'bg-rose-50 text-rose-800 border-rose-300'
+                            : s.status === 'RESUMED'
+                            ? 'bg-teal-50 text-teal-800 border-teal-300'
+                            : s.status === 'NEGOTIATING'
+                            ? 'bg-blue-50 text-blue-700 border-blue-300'
+                            : 'bg-slate-100 text-slate-700 border-slate-300'
+                        }`}>
                           {s.status}
                         </span>
                       </div>
@@ -207,6 +221,8 @@ export default function VendorNegotiations({
               }}
               events={sessionDetail.events || []}
               escalations={sessionDetail.escalations || []}
+              decisions={sessionDetail.decisions || []}
+              vendorState={sessionDetail.vendor_state || null}
               userRole="Vendor"
               onActionComplete={loadSessions}
               onRefresh={loadSessions}
