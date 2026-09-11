@@ -275,8 +275,10 @@ export default function GovNegotiations({
                 current_delivery_days: sessionDetail.session?.current_delivery_days,
                 pr_title: activeSessionObj?.pr_title,
                 vendor_name: activeSessionObj?.vendor_name,
+                escalations: sessionDetail.escalations || [],
               }}
               events={sessionDetail.events || []}
+              escalations={sessionDetail.escalations || []}
               userRole={user?.role || 'Lead Procurement Officer'}
               onActionComplete={loadSessions}
               onRefresh={loadSessions}

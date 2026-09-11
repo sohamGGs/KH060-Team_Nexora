@@ -121,6 +121,14 @@ export const negotiationsAPI = {
     });
     return response.data;
   },
+  counterOffer: async (sessionId, price, deliveryDays, message) => {
+    const response = await api.post(`/gov/vendors/negotiation/${sessionId}/counter`, {
+      price: Number(price),
+      delivery_days: Number(deliveryDays),
+      message: message || undefined,
+    });
+    return response.data;
+  },
   resumeNegotiation: async (sessionId) => {
     const response = await api.post(`/gov/vendors/negotiation/${sessionId}/resume`);
     return response.data;
@@ -151,6 +159,25 @@ export const vendorPortalAPI = {
   },
   getNegotiationDetail: async (sessionId) => {
     const response = await api.get(`/vendor/negotiation/${sessionId}`);
+    return response.data;
+  },
+  actionEscalation: async (sessionId, decision, comment) => {
+    const response = await api.post(`/vendor/negotiation/${sessionId}/escalation`, {
+      decision,
+      comment,
+    });
+    return response.data;
+  },
+  counterOffer: async (sessionId, price, deliveryDays, message) => {
+    const response = await api.post(`/vendor/negotiation/${sessionId}/counter`, {
+      price: Number(price),
+      delivery_days: Number(deliveryDays),
+      message: message || undefined,
+    });
+    return response.data;
+  },
+  resumeNegotiation: async (sessionId) => {
+    const response = await api.post(`/vendor/negotiation/${sessionId}/resume`);
     return response.data;
   },
 };

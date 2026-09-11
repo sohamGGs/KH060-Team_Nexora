@@ -199,12 +199,14 @@ export default function VendorNegotiations({
                 id: sessionDetail.session_id || selectedSessionId,
                 status: sessionDetail.status,
                 current_round: sessionDetail.current_round,
-                current_price: sessionDetail.events?.[sessionDetail.events.length - 1]?.price,
-                current_delivery_days: sessionDetail.events?.[sessionDetail.events.length - 1]?.delivery_days,
+                current_price: sessionDetail.current_price ?? sessionDetail.events?.[sessionDetail.events.length - 1]?.price,
+                current_delivery_days: sessionDetail.current_delivery_days ?? sessionDetail.events?.[sessionDetail.events.length - 1]?.delivery_days,
                 pr_title: sessionDetail.pr_title,
                 vendor_name: user?.department || 'Apex Global Industrial',
+                escalations: sessionDetail.escalations || [],
               }}
               events={sessionDetail.events || []}
+              escalations={sessionDetail.escalations || []}
               userRole="Vendor"
               onActionComplete={loadSessions}
               onRefresh={loadSessions}
