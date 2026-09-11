@@ -1,60 +1,100 @@
-from typing import List, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Any, Dict, List, Optional
+import json
+from datetime import datetime
+from app.negotiation.agents import resume_negotiation
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 
 from app.database import get_db
-from app import models, schemas, auth
+from app.models import (
+    NegotiationEscalation,
+    NegotiationSession,
+    PolicyDecision,
+    PurchaseRequest,
+    Vendor,
+    VendorBid,
+    VendorPerformance,
+)
+from app.negotiation.agents import run_multi_agent_negotiation
+from app.schemas import (
+    NegotiationHistoryResponse,
+    NegotiationResponse,
+    NegotiationTurnOut,
+    NegotiationEscalationAction,
+    VendorNegotiationResultOut,
+    VendorOut,
+    VendorRecommendation,
+    RecommendationsResponse,
+)
 
-router = APIRouter(prefix="/vendors", tags=["Vendors"])
+router = APIRouter(prefix="/api/vendors", tags=["vendors"])
 
+
+def calculate_bid_score(bid: VendorBid, vendor: Vendor, budget: float) -> float:
+    price_score = 0.0
+    delivery_score = 0.0
+    reliability_score = max(0.0, min(100.0, float(vendor.reliability_score or 0)))
+
+    if budget > 0:
+        price_score = max(0.0, min(100.0, (budget / max(bid.quoted_price, 1)) * 100))
+    else:
+        price_score = max(0.0, min(100.0, 100 - (bid.quoted_price / max(bid.quoted_price, 1) * 50)))
+
+    delivery_score = max(
+        0.0,
+        min(100.0, 100 - ((bid.delivery_days - vendor.avg_delivery_days) * 5)),
+    )
+
+    return round(
+        price_score * 0.50
+        + delivery_score * 0.20
+        + reliability_score * 0.30,
+        2,
+    )
 
 def compute_vendor_score(
-    vendor: models.Vendor,
+    vendor: Vendor,
     quoted_price: float,
     bid_days: int,
     budget: float,
-    performances: List[models.VendorPerformance]
+    performances: Optional[List[VendorPerformance]] = None,
 ) -> Dict[str, Any]:
     """
-    Computes total score (out of 100) = Price(30) + Delivery(25) + Reliability(25) + History(20) + Nearshoring/Incubator Bonus
-    - Cold-Start / Local Incubator Policy:
-      If a new local vendor has no historical orders, assigns a Bayesian Prior (80.0% baseline) + Nearshoring Bonus (+3.0 pts)
-      rather than penalizing with 0 or excluding from RFQs.
+    Computes vendor score breakdown (out of 100) = Price(30) + Delivery(25) + Reliability(25) + History(20) + Nearshoring/Incubator Bonus.
+    Preserves exact compatibility for dashboard and purchase-request callers.
     """
-    # 1. Price Score (30 max)
     safe_budget = max(budget, 1.0)
     price_variance_ratio = (quoted_price - safe_budget) / safe_budget
     raw_price_score = 30.0 * (1.0 - price_variance_ratio)
     price_score = min(30.0, max(0.0, raw_price_score))
     price_variance_pct = round(price_variance_ratio * 100.0, 2)
 
-    # 2. Delivery Score (25 max, 5 min)
-    avg_days = max(1, vendor.avg_delivery_days)
+    avg_days = max(1, getattr(vendor, "avg_delivery_days", 1) or 1)
     raw_delivery_score = 25.0 * (1.0 - (bid_days - avg_days) / avg_days)
     delivery_score = min(25.0, max(5.0, raw_delivery_score))
 
-    # 3. Reliability Score (25 max)
-    rel_pct = max(0.0, min(100.0, vendor.reliability_score))
+    rel_score = float(getattr(vendor, "reliability_score", 0.0) or 0.0)
+    rel_pct = max(0.0, min(100.0, rel_score))
     reliability_score = 25.0 * (rel_pct / 100.0)
 
-    # 4. History Score (20 max) with Bayesian Cold-Start Adjustment
     is_incubator = bool(getattr(vendor, "is_incubator", False) or getattr(vendor, "is_local_vendor", False))
     nearshoring_bonus = 0.0
 
     if performances:
         mean_perf = sum(p.value for p in performances) / len(performances)
     elif is_incubator:
-        # Bayesian prior: 80.0% benchmark score for new/local suppliers
         mean_perf = 80.0
-        nearshoring_bonus = 3.0  # +3 pts local ESG & low-emission nearshoring credit
+        nearshoring_bonus = 3.0
     else:
-        mean_perf = vendor.reliability_score
+        mean_perf = rel_score
 
     mean_perf = max(0.0, min(100.0, mean_perf))
     history_score = 20.0 * (mean_perf / 100.0)
 
-    total_score = round(min(100.0, price_score + delivery_score + reliability_score + history_score + nearshoring_bonus), 2)
+    total_score = round(
+        min(100.0, price_score + delivery_score + reliability_score + history_score + nearshoring_bonus),
+        2,
+    )
 
     return {
         "scores": {
@@ -64,343 +104,559 @@ def compute_vendor_score(
             "history_score": round(history_score, 2),
             "nearshoring_bonus": round(nearshoring_bonus, 2),
             "total_score": total_score,
-            "price_variance_pct": price_variance_pct
+            "price_variance_pct": price_variance_pct,
         },
-        "history_score_raw": round(mean_perf, 2)
+        "history_score_raw": round(mean_perf, 2),
     }
 
 
-@router.get("", response_model=List[schemas.VendorOut])
-def get_vendors(
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_user)
-):
-    vendors = db.query(models.Vendor).all()
-    results = []
-    for v in vendors:
-        perf_avg = db.query(func.avg(models.VendorPerformance.value)).filter(
-            models.VendorPerformance.vendor_id == v.id
-        ).scalar()
-        v_out = schemas.VendorOut.model_validate(v)
-        v_out.avg_performance_score = round(float(perf_avg), 1) if perf_avg is not None else v.reliability_score
-        results.append(v_out)
-    return results
+
+def build_recommendations(
+    db: Session,
+    pr: PurchaseRequest,
+) -> list[VendorRecommendation]:
+    bids = (
+        db.query(VendorBid)
+        .filter(VendorBid.pr_id == pr.id)
+        .all()
+    )
+
+    recommendations = []
+
+    for bid in bids:
+        vendor = db.query(Vendor).filter(Vendor.id == bid.vendor_id).first()
+        if not vendor:
+            continue
+
+        score = calculate_bid_score(bid, vendor, pr.estimated_budget)
+        bid.bid_score = score
+
+        original_price = bid.original_quoted_price or bid.quoted_price
+        savings = max(0.0, original_price - bid.quoted_price)
+        savings_pct = (savings / original_price * 100) if original_price else 0.0
+
+        recommendations.append(
+            VendorRecommendation(
+                vendor_id=vendor.id,
+                vendor_name=vendor.name,
+                quoted_price=bid.quoted_price,
+                delivery_days=bid.delivery_days,
+                bid_score=score,
+                price_savings=round(savings, 2),
+                savings_percentage=round(savings_pct, 2),
+                recommendation_reason=(
+                    "Strong combined price, delivery and reliability profile."
+                ),
+                scores={
+                    "price": round(
+                        min(100.0, (pr.estimated_budget / max(bid.quoted_price, 1)) * 100)
+                        if pr.estimated_budget
+                        else 0.0,
+                        2,
+                    ),
+                    "delivery": round(
+                        max(
+                            0.0,
+                            min(
+                                100.0,
+                                100 - ((bid.delivery_days - vendor.avg_delivery_days) * 5),
+                            ),
+                        ),
+                        2,
+                    ),
+                    "reliability": round(vendor.reliability_score, 2),
+                },
+            )
+        )
+
+    recommendations.sort(key=lambda item: item.bid_score, reverse=True)
+
+    db.commit()
+    return recommendations
 
 
-@router.get("/recommendations/{pr_id}", response_model=schemas.RecommendationsResponse)
+@router.get("", response_model=list[VendorOut])
+def get_vendors(db: Session = Depends(get_db)):
+    return db.query(Vendor).all()
+
+
+@router.get("/recommendations/{pr_id}", response_model=RecommendationsResponse)
 def get_vendor_recommendations(
     pr_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_user)
 ):
-    pr = db.query(models.PurchaseRequest).filter(models.PurchaseRequest.id == pr_id).first()
+    pr = db.query(PurchaseRequest).filter(PurchaseRequest.id == pr_id).first()
+
     if not pr:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Purchase request {pr_id} not found"
-        )
+        raise HTTPException(status_code=404, detail="Purchase request not found")
 
-    bids = db.query(models.VendorBid).filter(models.VendorBid.pr_id == pr.id).all()
-    if not bids:
-        return schemas.RecommendationsResponse(
-            pr_id=pr.id,
-            pr_title=pr.title,
-            estimated_budget=pr.estimated_budget,
-            urgency=pr.urgency,
-            department=pr.department,
-            recommendations=[]
-        )
+    recommendations = build_recommendations(db, pr)
 
-    recommendations: List[schemas.VendorRecommendation] = []
-
-    for bid in bids:
-        vendor = bid.vendor
-        performances = db.query(models.VendorPerformance).filter(
-            models.VendorPerformance.vendor_id == vendor.id
-        ).all()
-
-        score_res = compute_vendor_score(
-            vendor=vendor,
-            quoted_price=bid.quoted_price,
-            bid_days=bid.delivery_days,
-            budget=pr.estimated_budget,
-            performances=performances
-        )
-
-        # Update bid score in DB if needed
-        bid.bid_score = score_res["scores"]["total_score"]
-
-        transcript_list = None
-        if bid.negotiation_transcript:
-            try:
-                import json
-                transcript_list = json.loads(bid.negotiation_transcript)
-            except Exception:
-                transcript_list = None
-
-        rec = schemas.VendorRecommendation(
-            bid_id=bid.id,
-            vendor_id=vendor.id,
-            vendor_name=vendor.name,
-            pricing_tier=vendor.pricing_tier,
-            contact_email=vendor.contact_email,
-            quoted_price=bid.quoted_price,
-            original_quoted_price=bid.original_quoted_price,
-            estimated_budget=pr.estimated_budget,
-            delivery_days=bid.delivery_days,
-            original_delivery_days=bid.original_delivery_days,
-            avg_delivery_days=vendor.avg_delivery_days,
-            reliability_score=vendor.reliability_score,
-            history_score_raw=score_res["history_score_raw"],
-            notes=bid.notes,
-            scores=schemas.ScoreBreakdown(**score_res["scores"]),
-            rank=0,
-            is_local_vendor=bool(getattr(vendor, "is_local_vendor", False)),
-            is_incubator=bool(getattr(vendor, "is_incubator", False)),
-            local_proximity_km=getattr(vendor, "local_proximity_km", 15.0),
-            negotiation_transcript=transcript_list
-        )
-        recommendations.append(rec)
-
-    db.commit()
-
-    # Rank by total score descending
-    recommendations.sort(key=lambda x: x.scores.total_score, reverse=True)
-    for idx, rec in enumerate(recommendations, start=1):
-        rec.rank = idx
-
-    return schemas.RecommendationsResponse(
+    return RecommendationsResponse(
         pr_id=pr.id,
-        pr_title=pr.title,
-        estimated_budget=pr.estimated_budget,
-        urgency=pr.urgency,
-        department=pr.department,
-        recommendations=recommendations
+        recommendations=recommendations,
     )
 
 
-@router.post("/negotiate/{pr_id}", response_model=schemas.NegotiationResponse)
+@router.post("/negotiate/{pr_id}", response_model=NegotiationResponse)
 def run_autonomous_negotiation_endpoint(
     pr_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_user)
 ):
-    """
-    Executes a 3-round LangGraph multi-agent autonomous negotiation across
-    the top 3 scored vendors for the given PR. Updates prices, delivery SLAs,
-    recalculates composite scores, and persists full transcripts.
-    """
-    import json
-    from app.negotiation.agents import run_multi_agent_negotiation
+    pr = db.query(PurchaseRequest).filter(PurchaseRequest.id == pr_id).first()
 
-    pr = db.query(models.PurchaseRequest).filter(models.PurchaseRequest.id == pr_id).first()
     if not pr:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Purchase request {pr_id} not found"
-        )
+        raise HTTPException(status_code=404, detail="Purchase request not found")
 
-    bids = db.query(models.VendorBid).filter(models.VendorBid.pr_id == pr.id).all()
+    bids = (
+        db.query(VendorBid)
+        .filter(VendorBid.pr_id == pr_id)
+        .order_by(VendorBid.bid_score.desc())
+        .all()
+    )
+
     if not bids:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No vendor bids exist for this purchase request."
-        )
+        raise HTTPException(status_code=404, detail="No vendor bids found")
 
-    # 1. Compute current scores for all bids to determine top 3
-    scored_bids = []
+    candidates = []
+
     for bid in bids:
-        vendor = bid.vendor
-        performances = db.query(models.VendorPerformance).filter(
-            models.VendorPerformance.vendor_id == vendor.id
-        ).all()
-        score_res = compute_vendor_score(
-            vendor=vendor,
-            quoted_price=bid.quoted_price,
-            bid_days=bid.delivery_days,
-            budget=pr.estimated_budget,
-            performances=performances
-        )
-        scored_bids.append({
-            "bid": bid,
-            "vendor": vendor,
-            "score": score_res["scores"]["total_score"],
-            "score_res": score_res
-        })
-
-    # Sort descending by composite score
-    scored_bids.sort(key=lambda x: x["score"], reverse=True)
-    top_3_entries = scored_bids[:3]
-
-    # 2. Prepare payload for LangGraph multi-agent execution
-    pr_payload = {
-        "id": pr.id,
-        "title": pr.title,
-        "item_description": pr.item_description,
-        "quantity": pr.quantity,
-        "estimated_budget": pr.estimated_budget,
-        "urgency": pr.urgency,
-        "department": pr.department
-    }
-
-    top_vendors_payload = [
-        {
-            "vendor_id": entry["vendor"].id,
-            "vendor_name": entry["vendor"].name,
-            "pricing_tier": entry["vendor"].pricing_tier,
-            "quoted_price": entry["bid"].quoted_price,
-            "delivery_days": entry["bid"].delivery_days,
-            "avg_delivery_days": entry["vendor"].avg_delivery_days
-        }
-        for entry in top_3_entries
-    ]
-
-    # 3. Execute LangGraph StateGraph
-    negotiation_state = run_multi_agent_negotiation(pr_payload, top_vendors_payload)
-
-    # 4. Update database records with negotiated values and transcripts
-    results: List[schemas.VendorNegotiationResultOut] = []
-    total_initial = 0.0
-    total_negotiated = 0.0
-
-    for vs in negotiation_state["vendors"]:
-        v_id = vs["vendor_id"]
-        # Locate matching bid
-        matching_entry = next((e for e in top_3_entries if e["vendor"].id == v_id), None)
-        if matching_entry:
-            bid = matching_entry["bid"]
-            vendor = matching_entry["vendor"]
-
-            orig_price = bid.original_quoted_price if bid.original_quoted_price is not None else vs["initial_price"]
-            orig_days = bid.original_delivery_days if bid.original_delivery_days is not None else vs["initial_days"]
-
-            bid.original_quoted_price = orig_price
-            bid.original_delivery_days = orig_days
-            bid.quoted_price = vs["final_price"]
-            bid.delivery_days = vs["final_days"]
-            bid.negotiation_transcript = json.dumps(vs["transcript"])
-
-            # Compute new vendor score
-            performances = db.query(models.VendorPerformance).filter(
-                models.VendorPerformance.vendor_id == vendor.id
-            ).all()
-            new_score_res = compute_vendor_score(
-                vendor=vendor,
-                quoted_price=bid.quoted_price,
-                bid_days=bid.delivery_days,
-                budget=pr.estimated_budget,
-                performances=performances
+        active_session = (
+            db.query(NegotiationSession)
+            .filter(
+                NegotiationSession.vendor_bid_id == bid.id,
+                NegotiationSession.status.in_(
+                    ["INITIATED", "NEGOTIATING", "ESCALATED", "PENDING_APPROVAL", "RESUMED"]
+                ),
             )
-            bid.bid_score = new_score_res["scores"]["total_score"]
+            .first()
+        )
 
-            savings = max(0.0, orig_price - vs["final_price"])
-            savings_pct = round((savings / orig_price) * 100.0, 2) if orig_price > 0 else 0.0
-            days_saved = max(0, orig_days - vs["final_days"])
+        if active_session:
+            continue
 
-            total_initial += orig_price
-            total_negotiated += vs["final_price"]
+        vendor = db.query(Vendor).filter(Vendor.id == bid.vendor_id).first()
 
-            turns = [
-                schemas.NegotiationTurnOut(
-                    round=t["round"],
-                    speaker=t["speaker"],
-                    speaker_role=t["speaker_role"],
-                    message=t["message"],
-                    offered_price=t["offered_price"],
-                    offered_days=t["offered_days"],
-                    is_fallback=t.get("is_fallback", False)
-                )
-                for t in vs["transcript"]
-            ]
+        if not vendor:
+            continue
 
-            results.append(schemas.VendorNegotiationResultOut(
-                vendor_id=vendor.id,
-                vendor_name=vendor.name,
-                pricing_tier=vendor.pricing_tier,
-                original_price=round(orig_price, 2),
-                negotiated_price=round(vs["final_price"], 2),
-                original_days=int(orig_days),
-                negotiated_days=int(vs["final_days"]),
-                savings_amount=round(savings, 2),
-                savings_pct=savings_pct,
-                days_saved=days_saved,
-                status=vs.get("status", "completed"),
-                transcript=turns,
-                updated_score=new_score_res["scores"]["total_score"]
-            ))
+        candidates.append((bid, vendor))
+
+        if len(candidates) == 3:
+            break
+
+    if not candidates:
+        raise HTTPException(
+            status_code=409,
+            detail="All eligible vendor bids already have active negotiation sessions",
+        )
+
+    payload = []
+
+    for bid, vendor in candidates:
+        if bid.original_quoted_price is None:
+            bid.original_quoted_price = bid.quoted_price
+
+        if bid.original_delivery_days is None:
+            bid.original_delivery_days = bid.delivery_days
+
+        session_count = (
+            db.query(NegotiationSession)
+            .filter(NegotiationSession.vendor_bid_id == bid.id)
+            .count()
+        )
+
+        payload.append(
+            {
+                "vendor_id": vendor.id,
+                "vendor_name": vendor.name,
+                "pricing_tier": vendor.pricing_tier,
+                "initial_price": float(bid.quoted_price),
+                "initial_days": int(bid.delivery_days),
+                "avg_delivery_days": int(vendor.avg_delivery_days or bid.delivery_days),
+                "session_number": session_count + 1,
+                "vendor_bid_id": bid.id,
+            }
+        )
 
     db.commit()
 
-    # 5. Build full refreshed recommendations list
-    all_bids = db.query(models.VendorBid).filter(models.VendorBid.pr_id == pr.id).all()
-    refreshed_recs: List[schemas.VendorRecommendation] = []
-    for bid in all_bids:
-        vendor = bid.vendor
-        performances = db.query(models.VendorPerformance).filter(
-            models.VendorPerformance.vendor_id == vendor.id
-        ).all()
-        score_res = compute_vendor_score(
-            vendor=vendor,
-            quoted_price=bid.quoted_price,
-            bid_days=bid.delivery_days,
-            budget=pr.estimated_budget,
-            performances=performances
-        )
-        bid.bid_score = score_res["scores"]["total_score"]
-
-        transcript_list = None
-        if bid.negotiation_transcript:
-            try:
-                transcript_list = json.loads(bid.negotiation_transcript)
-            except Exception:
-                transcript_list = None
-
-        rec = schemas.VendorRecommendation(
-            bid_id=bid.id,
-            vendor_id=vendor.id,
-            vendor_name=vendor.name,
-            pricing_tier=vendor.pricing_tier,
-            contact_email=vendor.contact_email,
-            quoted_price=bid.quoted_price,
-            original_quoted_price=bid.original_quoted_price,
-            estimated_budget=pr.estimated_budget,
-            delivery_days=bid.delivery_days,
-            original_delivery_days=bid.original_delivery_days,
-            avg_delivery_days=vendor.avg_delivery_days,
-            reliability_score=vendor.reliability_score,
-            history_score_raw=score_res["history_score_raw"],
-            notes=bid.notes,
-            scores=schemas.ScoreBreakdown(**score_res["scores"]),
-            rank=0,
-            is_local_vendor=bool(getattr(vendor, "is_local_vendor", False)),
-            is_incubator=bool(getattr(vendor, "is_incubator", False)),
-            local_proximity_km=getattr(vendor, "local_proximity_km", 15.0),
-            negotiation_transcript=transcript_list
-        )
-        refreshed_recs.append(rec)
-
-    db.commit()
-
-    # Rank by total score descending
-    refreshed_recs.sort(key=lambda x: x.scores.total_score, reverse=True)
-    for idx, rec in enumerate(refreshed_recs, start=1):
-        rec.rank = idx
-
-    total_savings = max(0.0, total_initial - total_negotiated)
-    total_savings_pct = round((total_savings / total_initial) * 100.0, 2) if total_initial > 0 else 0.0
-
-    top_winner = refreshed_recs[0] if refreshed_recs else None
-
-    return schemas.NegotiationResponse(
+    graph_result = run_multi_agent_negotiation(
         pr_id=pr.id,
         pr_title=pr.title,
+        item_description=pr.item_description,
+        quantity=pr.quantity,
         estimated_budget=pr.estimated_budget,
-        total_initial_spend=round(total_initial, 2),
-        total_negotiated_spend=round(total_negotiated, 2),
-        total_savings=round(total_savings, 2),
-        total_savings_pct=total_savings_pct,
-        top_vendor_id=top_winner.vendor_id if top_winner else 0,
-        top_vendor_name=top_winner.vendor_name if top_winner else "",
+        urgency=pr.urgency,
+        department=pr.department,
+        vendors=payload,
+    )
+
+    results = []
+    sessions = []
+    any_escalated = False
+    all_completed = True
+
+    for vendor_state, source in zip(graph_result["vendors"], payload):
+        bid = db.query(VendorBid).filter(VendorBid.id == source["vendor_bid_id"]).first()
+
+        session = NegotiationSession(
+            vendor_bid_id=bid.id,
+            session_number=source["session_number"],
+            status=vendor_state["status"],
+            current_round=graph_result["current_round"],
+            current_price=vendor_state["current_price"],
+            current_delivery_days=vendor_state["current_days"],
+            price_ceiling=pr.estimated_budget,
+            delivery_floor=vendor_state["delivery_floor"],
+        )
+
+        db.add(session)
+        db.flush()
+
+        for turn in vendor_state["transcript"]:
+            if turn["speaker_role"] != "SYSTEM":
+                continue
+
+        policy_decision = PolicyDecision(
+            negotiation_session_id=session.id,
+            round=graph_result["current_round"],
+            evaluated_price=vendor_state["current_price"],
+            evaluated_delivery_days=vendor_state["current_days"],
+            decision=vendor_state["action"],
+            rule_triggered=vendor_state["policy_reason"] or "Policy evaluation completed",
+            threshold_value=str(pr.estimated_budget),
+            actual_value=str(vendor_state["current_price"]),
+        )
+
+        db.add(policy_decision)
+
+        escalation_id = None
+
+        if vendor_state["action"] == "ESCALATE":
+            any_escalated = True
+            all_completed = False
+
+            session.status = "PENDING_APPROVAL"
+
+            escalation = NegotiationEscalation(
+                negotiation_session_id=session.id,
+                reason=vendor_state["policy_reason"],
+                requested_price=vendor_state["current_price"],
+                requested_delivery_days=vendor_state["current_days"],
+                status="PENDING",
+            )
+
+            db.add(escalation)
+            db.flush()
+
+            escalation_id = escalation.id
+
+        elif vendor_state["action"] == "CONTINUE":
+            all_completed = False
+
+        if bid:
+            if vendor_state["action"] == "ACCEPT":
+                bid.quoted_price = vendor_state["final_price"]
+                bid.delivery_days = vendor_state["final_days"]
+
+            bid.negotiation_transcript = json.dumps(
+                vendor_state["transcript"],
+                default=str,
+            )
+            bid.bid_score = calculate_bid_score(
+                bid,
+                db.query(Vendor).filter(Vendor.id == bid.vendor_id).first(),
+                pr.estimated_budget,
+            )
+
+        savings = max(
+            0.0,
+            source["initial_price"] - vendor_state["final_price"],
+        )
+
+        savings_pct = (
+            savings / source["initial_price"] * 100
+            if source["initial_price"]
+            else 0.0
+        )
+
+        results.append(
+            VendorNegotiationResultOut(
+                vendor_id=vendor_state["vendor_id"],
+                vendor_name=vendor_state["vendor_name"],
+                final_price=vendor_state["final_price"],
+                final_days=vendor_state["final_days"],
+                savings=round(savings, 2),
+                savings_percentage=round(savings_pct, 2),
+                status=vendor_state["status"],
+                action=vendor_state["action"],
+                is_fallback=vendor_state["is_fallback"],
+                transcript=[
+                    NegotiationTurnOut(**turn)
+                    for turn in vendor_state["transcript"]
+                ],
+                session_id=session.id,
+                escalation_id=escalation_id,
+            )
+        )
+
+        sessions.append(session)
+
+    db.commit()
+
+    return NegotiationResponse(
+        pr_id=pr.id,
         results=results,
-        recommendations=refreshed_recs
+        completed=all_completed and not any_escalated,
+        escalated=any_escalated,
+        sessions=sessions,
+    )
+
+
+@router.get(
+    "/negotiation/{session_id}",
+    response_model=NegotiationHistoryResponse,
+)
+def get_negotiation_history(
+    session_id: int,
+    db: Session = Depends(get_db),
+):
+    session = (
+        db.query(NegotiationSession)
+        .filter(NegotiationSession.id == session_id)
+        .first()
+    )
+
+    if not session:
+        raise HTTPException(status_code=404, detail="Negotiation session not found")
+
+    decisions = (
+        db.query(PolicyDecision)
+        .filter(PolicyDecision.negotiation_session_id == session.id)
+        .order_by(PolicyDecision.round.asc())
+        .all()
+    )
+
+    escalation = (
+        db.query(NegotiationEscalation)
+        .filter(NegotiationEscalation.negotiation_session_id == session.id)
+        .first()
+    )
+
+    transcript: list[NegotiationTurnOut] = []
+
+    if session.vendor_bid and session.vendor_bid.negotiation_transcript:
+        try:
+            transcript = [
+                NegotiationTurnOut(**turn)
+                for turn in json.loads(session.vendor_bid.negotiation_transcript)
+            ]
+        except Exception:
+            transcript = []
+
+    return NegotiationHistoryResponse(
+        session=session,
+        decisions=decisions,
+        escalation=escalation,
+        transcript=transcript,
+    )
+
+
+@router.post(
+    "/negotiation/{session_id}/escalation",
+    response_model=dict,
+)
+def action_negotiation_escalation(
+    session_id: int,
+    action: NegotiationEscalationAction,
+    db: Session = Depends(get_db),
+):
+    session = (
+        db.query(NegotiationSession)
+        .filter(NegotiationSession.id == session_id)
+        .first()
+    )
+
+    if not session:
+        raise HTTPException(status_code=404, detail="Negotiation session not found")
+
+    escalation = (
+        db.query(NegotiationEscalation)
+        .filter(NegotiationEscalation.negotiation_session_id == session_id)
+        .first()
+    )
+
+    if not escalation:
+        raise HTTPException(status_code=404, detail="No escalation found")
+
+    if escalation.status != "PENDING":
+        raise HTTPException(status_code=409, detail="Escalation already actioned")
+
+    escalation.status = action.decision
+    escalation.comment = action.comment
+    escalation.actioned_at = datetime.utcnow()
+
+    if action.decision == "APPROVE":
+        session.status = "RESUMED"
+    else:
+        session.status = "REJECTED"
+
+    db.commit()
+
+    return {
+        "message": f"Negotiation escalation {action.decision.lower()}ed",
+        "session_id": session.id,
+        "status": session.status,
+    }
+
+
+@router.post(
+    "/negotiation/{session_id}/resume",
+    response_model=NegotiationResponse,
+)
+def resume_negotiation_endpoint(
+    session_id: int,
+    db: Session = Depends(get_db),
+):
+    session = (
+        db.query(NegotiationSession)
+        .filter(NegotiationSession.id == session_id)
+        .first()
+    )
+
+    if not session:
+        raise HTTPException(status_code=404, detail="Negotiation session not found")
+
+    escalation = (
+        db.query(NegotiationEscalation)
+        .filter(
+            NegotiationEscalation.negotiation_session_id == session_id,
+            NegotiationEscalation.status == "APPROVED",
+        )
+        .first()
+    )
+
+    if not escalation:
+        raise HTTPException(
+            status_code=409,
+            detail="Negotiation cannot resume without an approved escalation",
+        )
+
+    bid = session.vendor_bid
+    vendor = bid.vendor
+    pr = bid.purchase_request
+
+    try:
+        transcript = json.loads(bid.negotiation_transcript or "[]")
+    except Exception:
+        transcript = []
+
+    result = resume_negotiation(
+        session={
+            "current_price": session.current_price,
+            "current_delivery_days": session.current_delivery_days,
+            "current_round": session.current_round,
+        },
+        vendor={
+            "id": vendor.id,
+            "name": vendor.name,
+            "pricing_tier": vendor.pricing_tier,
+            "avg_delivery_days": vendor.avg_delivery_days,
+        },
+        pr={
+            "id": pr.id,
+            "title": pr.title,
+            "item_description": pr.item_description,
+            "quantity": pr.quantity,
+            "estimated_budget": pr.estimated_budget,
+            "urgency": pr.urgency,
+            "department": pr.department,
+        },
+        transcript=transcript,
+    )
+
+    vendor_state = result["vendors"][0]
+
+    session.status = (
+        "PENDING_APPROVAL"
+        if vendor_state["action"] == "ESCALATE"
+        else vendor_state["status"]
+    )
+    session.current_round = result["current_round"]
+    session.current_price = vendor_state["current_price"]
+    session.current_delivery_days = vendor_state["current_days"]
+    session.updated_at = datetime.utcnow()
+
+    db.add(
+        PolicyDecision(
+            negotiation_session_id=session.id,
+            round=result["current_round"],
+            evaluated_price=vendor_state["current_price"],
+            evaluated_delivery_days=vendor_state["current_days"],
+            decision=vendor_state["action"],
+            rule_triggered=vendor_state["policy_reason"],
+            threshold_value=str(pr.estimated_budget),
+            actual_value=str(vendor_state["current_price"]),
+        )
+    )
+
+    escalation_id = None
+
+    if vendor_state["action"] == "ESCALATE":
+        escalation = NegotiationEscalation(
+            negotiation_session_id=session.id,
+            reason=vendor_state["policy_reason"],
+            requested_price=vendor_state["current_price"],
+            requested_delivery_days=vendor_state["current_days"],
+            status="PENDING",
+        )
+        db.add(escalation)
+        db.flush()
+        escalation_id = escalation.id
+
+    bid.negotiation_transcript = json.dumps(
+        vendor_state["transcript"],
+        default=str,
+    )
+
+    if vendor_state["action"] == "ACCEPT":
+        bid.quoted_price = vendor_state["final_price"]
+        bid.delivery_days = vendor_state["final_days"]
+
+    db.commit()
+    db.refresh(session)
+
+    savings = max(
+        0.0,
+        (bid.original_quoted_price or bid.quoted_price) - vendor_state["final_price"],
+    )
+
+    original = bid.original_quoted_price or bid.quoted_price
+    savings_pct = savings / original * 100 if original else 0.0
+
+    return NegotiationResponse(
+        pr_id=pr.id,
+        results=[
+            VendorNegotiationResultOut(
+                vendor_id=vendor.id,
+                vendor_name=vendor.name,
+                final_price=vendor_state["final_price"],
+                final_days=vendor_state["final_days"],
+                savings=round(savings, 2),
+                savings_percentage=round(savings_pct, 2),
+                status=session.status,
+                action=vendor_state["action"],
+                is_fallback=vendor_state["is_fallback"],
+                transcript=[
+                    NegotiationTurnOut(**turn)
+                    for turn in vendor_state["transcript"]
+                ],
+                session_id=session.id,
+                escalation_id=escalation_id,
+            )
+        ],
+        completed=vendor_state["action"] == "ACCEPT",
+        escalated=vendor_state["action"] == "ESCALATE",
+        sessions=[session],
     )

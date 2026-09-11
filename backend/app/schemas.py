@@ -1,193 +1,106 @@
-import datetime
-from typing import List, Optional, Dict, Any
+from datetime import datetime
+from typing import Any, Dict, List, Literal, Optional
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
-# --- USER SCHEMAS ---
-class UserBase(BaseModel):
-    email: str
-    full_name: str
-    role: str
-    department: str
-
-
-class UserCreate(UserBase):
-    password: str
-
-
-class UserOut(UserBase):
-    id: int
-    model_config = ConfigDict(from_attributes=True)
-
-
+# --- USER & AUTHENTICATION SCHEMAS ---
 class Token(BaseModel):
     access_token: str
     token_type: str
-    user: UserOut
 
 
 class TokenData(BaseModel):
     email: Optional[str] = None
-    role: Optional[str] = None
 
 
-class LoginRequest(BaseModel):
-    username: str
-    password: str
+class UserOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    email: str
+    full_name: str
+    role: str
+    department: Optional[str] = None
 
 
 # --- VENDOR SCHEMAS ---
-class VendorPerformanceOut(BaseModel):
-    id: int
-    vendor_id: int
-    metric_type: str
-    value: float
-    recorded_at: datetime.datetime
-    notes: Optional[str] = None
+class VendorOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-
-class VendorBase(BaseModel):
+    id: int
     name: str
-    contact_email: str
-    phone: str
-    avg_delivery_days: int
-    reliability_score: float
     pricing_tier: str
-    specialties: Optional[str] = None
-    status: str = "Active"
-    is_local_vendor: Optional[bool] = False
-    is_incubator: Optional[bool] = False
-    local_proximity_km: Optional[float] = 15.0
-
-
-class VendorOut(VendorBase):
-    id: int
-    avg_performance_score: Optional[float] = None
-    model_config = ConfigDict(from_attributes=True)
-
-
-# --- VENDOR BID & SCORING SCHEMAS ---
-class ScoreBreakdown(BaseModel):
-    price_score: float
-    delivery_score: float
     reliability_score: float
-    history_score: float
-    total_score: float
-    price_variance_pct: float
-    nearshoring_bonus: Optional[float] = 0.0
+    avg_delivery_days: int
 
 
 class VendorBidOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     vendor_id: int
     pr_id: int
     quoted_price: float
-    original_quoted_price: Optional[float] = None
     delivery_days: int
-    original_delivery_days: Optional[int] = None
     notes: Optional[str] = None
     bid_score: float
-    negotiation_transcript: Optional[str] = None
     vendor: Optional[VendorOut] = None
-    model_config = ConfigDict(from_attributes=True)
 
 
 class VendorRecommendation(BaseModel):
-    bid_id: int
     vendor_id: int
     vendor_name: str
     pricing_tier: str
-    contact_email: str
-    quoted_price: float
-    original_quoted_price: Optional[float] = None
-    estimated_budget: float
-    delivery_days: int
-    original_delivery_days: Optional[int] = None
-    avg_delivery_days: int
-    reliability_score: float
-    history_score_raw: float
-    notes: Optional[str] = None
-    scores: ScoreBreakdown
-    rank: int
-    is_local_vendor: Optional[bool] = False
-    is_incubator: Optional[bool] = False
-    local_proximity_km: Optional[float] = 15.0
-    negotiation_transcript: Optional[List[Dict[str, Any]]] = None
+    rationale: str
+    score: float
 
 
-class RecommendationsResponse(BaseModel):
+# --- COMPLIANCE SCHEMAS ---
+class ViolationItem(BaseModel):
+    rule_name: str
+    explanation: str
+    severity: str = Field(default="Medium", pattern="^(Low|Medium|High)$")
+
+
+class ComplianceCheckOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
     pr_id: int
-    pr_title: str
-    estimated_budget: float
-    urgency: str
-    department: str
-    recommendations: List[VendorRecommendation]
-
-
-# --- AUTONOMOUS NEGOTIATION SCHEMAS ---
-class NegotiationTurnOut(BaseModel):
-    round: int
-    speaker: str
-    speaker_role: str  # "buyer" | "vendor"
-    message: str
-    offered_price: float
-    offered_days: int
-    is_fallback: bool = False
-
-
-class VendorNegotiationResultOut(BaseModel):
-    vendor_id: int
-    vendor_name: str
-    pricing_tier: str
-    original_price: float
-    negotiated_price: float
-    original_days: int
-    negotiated_days: int
-    savings_amount: float
-    savings_pct: float
-    days_saved: int
-    status: str  # "completed" | "held"
-    transcript: List[NegotiationTurnOut]
-    updated_score: Optional[float] = None
-
-
-class NegotiationResponse(BaseModel):
-    pr_id: int
-    pr_title: str
-    estimated_budget: float
-    total_initial_spend: float
-    total_negotiated_spend: float
-    total_savings: float
-    total_savings_pct: float
-    top_vendor_id: int
-    top_vendor_name: str
-    results: List[VendorNegotiationResultOut]
-    recommendations: List[VendorRecommendation]
+    compliant: bool
+    violations: List[ViolationItem] = []
+    violations_json: Optional[str] = "[]"
+    required_action: str = ""
+    checked_at: datetime
 
 
 # --- APPROVAL WORKFLOW SCHEMAS ---
 class ApprovalWorkflowOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     pr_id: int
     approver_id: Optional[int] = None
     triggered_rule: str
     status: str
     comment: Optional[str] = None
-    created_at: datetime.datetime
-    actioned_at: Optional[datetime.datetime] = None
+    created_at: datetime
+    actioned_at: Optional[datetime] = None
     approver: Optional[UserOut] = None
-    model_config = ConfigDict(from_attributes=True)
 
 
 class ApprovalActionRequest(BaseModel):
-    action: str = Field(..., pattern="^(Approved|Rejected)$")
+    action: Optional[str] = None
+    decision: Optional[Literal["APPROVE", "REJECT"]] = None
     comment: Optional[str] = None
     vendor_id: Optional[int] = None
 
 
 # --- PURCHASE ORDER SCHEMAS ---
 class PurchaseOrderOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     pr_id: int
     vendor_id: int
@@ -199,9 +112,8 @@ class PurchaseOrderOut(BaseModel):
     netsuite_sync_status: Optional[str] = "Synced (SuiteTalk REST)"
     netsuite_subsidiary: Optional[str] = "TechCorp Americas (Sub 01)"
     netsuite_gl_account: Optional[str] = "6010 - Direct Sourcing & Material CapEx"
-    created_at: datetime.datetime
+    created_at: datetime
     vendor: Optional[VendorOut] = None
-    model_config = ConfigDict(from_attributes=True)
 
 
 class NetSuiteSyncResponse(BaseModel):
@@ -214,34 +126,18 @@ class NetSuiteSyncResponse(BaseModel):
     currency: str = "USD"
     three_way_match_status: str
     suitetalk_rest_payload: Dict[str, Any]
-    last_synced_at: datetime.datetime
+    last_synced_at: datetime
 
 
 class PurchaseOrderStatusUpdate(BaseModel):
     new_status: str = Field(..., pattern="^(Sent|Acknowledged|Delivered)$")
 
 
-# --- COMPLIANCE SCHEMAS ---
-class ViolationItem(BaseModel):
-    rule_name: str
-    explanation: str
-    severity: str = Field(default="Medium", pattern="^(Low|Medium|High)$")
-
-
-class ComplianceCheckOut(BaseModel):
-    id: int
-    pr_id: int
-    compliant: bool
-    violations: List[ViolationItem] = []
-    required_action: str = ""
-    checked_at: datetime.datetime
-    model_config = ConfigDict(from_attributes=True)
-
-
 # --- PURCHASE REQUEST SCHEMAS ---
 class PurchaseRequestCreate(BaseModel):
     title: str
     item_description: str
+    category: Optional[str] = None
     quantity: int = Field(default=1, ge=1)
     urgency: str = Field(default="Medium", pattern="^(Low|Medium|High|Critical)$")
     department: str
@@ -249,16 +145,19 @@ class PurchaseRequestCreate(BaseModel):
 
 
 class PurchaseRequestOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     title: str
     item_description: str
+    category: Optional[str] = None
     quantity: int
     urgency: str
     status: str
     requester_id: int
     department: str
     estimated_budget: float
-    created_at: datetime.datetime
+    created_at: datetime
     requester: Optional[UserOut] = None
     bids_count: int = 0
     assigned_approval_rule: Optional[str] = None
@@ -267,7 +166,6 @@ class PurchaseRequestOut(BaseModel):
     po_number: Optional[str] = None
     winning_vendor: Optional[str] = None
     compliance: Optional[ComplianceCheckOut] = None
-    model_config = ConfigDict(from_attributes=True)
 
 
 class PurchaseRequestDetail(PurchaseRequestOut):
@@ -284,13 +182,16 @@ class RiskAssessment(BaseModel):
 
 
 class AIAuditResponse(BaseModel):
-    pr_id: int
-    selected_vendor_name: str
-    confidence_score: float  # 0 - 100
-    executive_summary: str
-    key_advantages: List[str]
-    net_savings_estimate: float
-    risk_assessment: RiskAssessment
+    recommendation: Optional[str] = None
+    confidence: Optional[float] = None
+    risk_assessment: Optional[Any] = None
+    reasoning: Optional[str] = None
+    pr_id: Optional[int] = None
+    selected_vendor_name: Optional[str] = None
+    confidence_score: Optional[float] = None
+    executive_summary: Optional[str] = None
+    key_advantages: Optional[List[str]] = None
+    net_savings_estimate: Optional[float] = None
     is_live_gemini: bool = False
 
 
@@ -316,13 +217,175 @@ class MonthlySpendItem(BaseModel):
 
 
 class DashboardMetrics(BaseModel):
-    total_prs: int
-    pending_approvals: int
-    total_approved_pos: int
-    total_spend: float
-    avg_vendor_reliability: float
-    three_way_match_verified: int
-    spend_by_department: List[SpendByDepartment]
-    vendor_performance_matrix: List[VendorScoreSummary]
-    monthly_spend_flow: List[MonthlySpendItem]
-    recent_prs: List[PurchaseRequestOut]
+    total_prs: Optional[int] = None
+    total_requests: Optional[int] = None
+    pending_approvals: int = 0
+    approved_requests: Optional[int] = None
+    total_approved_pos: Optional[int] = None
+    total_spend: float = 0.0
+    avg_vendor_reliability: Optional[float] = None
+    three_way_match_verified: Optional[int] = None
+    spend_by_department: List[SpendByDepartment] = []
+    vendor_performance_matrix: List[VendorScoreSummary] = []
+    monthly_spend_flow: List[MonthlySpendItem] = []
+    recent_prs: List[PurchaseRequestOut] = []
+
+
+class GenericMessageResponse(BaseModel):
+    message: str
+    data: Optional[Dict[str, Any]] = None
+
+
+# --- AUTONOMOUS NEGOTIATION SCHEMAS ---
+class NegotiationTurnOut(BaseModel):
+    round: int
+    speaker: str
+    speaker_role: str
+    message: str
+    offered_price: float
+    offered_days: int
+    is_fallback: bool = False
+
+
+class NegotiationEventOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    round: int
+    speaker_role: str
+    event_type: str
+    price: Optional[float] = None
+    delivery_days: Optional[int] = None
+    message: Optional[str] = None
+    created_at: datetime
+
+
+class NegotiationSessionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    vendor_bid_id: int
+    session_number: int
+    status: str
+    current_round: int
+    current_price: float
+    current_delivery_days: int
+    version: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class GovNegotiationStateOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    target_price: float
+    max_authorized_price: float
+    target_delivery: int
+    max_delivery: int
+    strategy: str
+
+
+class VendorNegotiationStateOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    target_price: float
+    absolute_minimum_price: float
+    feasible_delivery: int
+    strategy: str
+
+
+class PolicyDecisionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    negotiation_session_id: int
+    role: str
+    round: int
+    evaluated_price: float
+    evaluated_delivery_days: int
+    decision: str
+    rule_triggered: str
+    threshold_value: Optional[str] = None
+    actual_value: Optional[str] = None
+    created_at: datetime
+
+
+class NegotiationEscalationOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    negotiation_session_id: int
+    role: str
+    reason: str
+    requested_price: Optional[float] = None
+    requested_delivery_days: Optional[int] = None
+    status: str
+    approver_id: Optional[int] = None
+    comment: Optional[str] = None
+    created_at: datetime
+    actioned_at: Optional[datetime] = None
+
+
+class NegotiationEscalationAction(BaseModel):
+    decision: Literal["APPROVE", "REJECT"]
+    comment: Optional[str] = None
+
+
+class VendorNegotiationResultOut(BaseModel):
+    vendor_id: int
+    vendor_name: str
+    final_price: float
+    final_days: int
+    savings: float
+    savings_percentage: float
+    status: str
+    action: Literal["CONTINUE", "ACCEPT", "REJECT", "ESCALATE"]
+    is_fallback: bool = False
+    events: List[NegotiationEventOut] = []
+    session_id: Optional[int] = None
+    escalation_id: Optional[int] = None
+
+
+class NegotiationResponse(BaseModel):
+    pr_id: int
+    pr_title: Optional[str] = None
+    estimated_budget: Optional[float] = None
+    total_initial_spend: Optional[float] = None
+    total_negotiated_spend: Optional[float] = None
+    total_savings: Optional[float] = None
+    total_savings_pct: Optional[float] = None
+    top_vendor_id: Optional[int] = None
+    top_vendor_name: Optional[str] = None
+    results: List[VendorNegotiationResultOut] = []
+    recommendations: Optional[List[VendorRecommendation]] = None
+    completed: bool = False
+    escalated: bool = False
+    sessions: List[NegotiationSessionOut] = []
+
+
+class GovNegotiationHistoryResponse(BaseModel):
+    session: NegotiationSessionOut
+    gov_state: Optional[GovNegotiationStateOut] = None
+    events: List[NegotiationEventOut] = []
+    decisions: List[PolicyDecisionOut] = []
+    escalations: List[NegotiationEscalationOut] = []
+
+
+class VendorNegotiationHistoryResponse(BaseModel):
+    session: NegotiationSessionOut
+    vendor_state: Optional[VendorNegotiationStateOut] = None
+    events: List[NegotiationEventOut] = []
+    decisions: List[PolicyDecisionOut] = []
+    escalations: List[NegotiationEscalationOut] = []
+
+
+class NegotiationResumeRequest(BaseModel):
+    price: Optional[float] = None
+    delivery_days: Optional[int] = None
+    comment: Optional[str] = None
+
+
+NegotiationHistoryResponse = GovNegotiationHistoryResponse
+
+class RecommendationsResponse(BaseModel):
+    recommendations: List[VendorRecommendation]
