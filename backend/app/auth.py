@@ -17,9 +17,30 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY or SECRET_KEY == "procureiq-zenesys-2026-secret-key-hackathon":
     raise ValueError("FATAL: SECRET_KEY environment variable is not securely set.")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
+ACCESS_TOKEN_EXPIRE_MINUTES = 60  # 60 minutes
+
+
+import time
+from collections import defaultdict
+
+# Rate Limiting configuration
+LOGIN_ATTEMPTS = defaultdict(list)
+MAX_LOGIN_ATTEMPTS = 5
+LOGIN_RATE_LIMIT_WINDOW = 60  # seconds
+
+def check_rate_limit(ip: str) -> bool:
+    current_time = time.time()
+    attempts = LOGIN_ATTEMPTS.get(ip, [])
+    # Filter attempts within the window
+    attempts = [t for t in attempts if current_time - t < LOGIN_RATE_LIMIT_WINDOW]
+    LOGIN_ATTEMPTS[ip] = attempts
+    return len(attempts) < MAX_LOGIN_ATTEMPTS
+
+def record_failed_attempt(ip: str):
+    LOGIN_ATTEMPTS[ip].append(time.time())
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:

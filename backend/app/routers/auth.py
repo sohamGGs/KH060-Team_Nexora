@@ -14,6 +14,12 @@ async def login(
     request: Request,
     db: Session = Depends(get_db)
 ):
+    client_ip = request.client.host if request.client else "unknown"
+    if not auth.check_rate_limit(client_ip):
+        raise HTTPException(
+            status_code=429,
+            detail="Too many failed login attempts. Please try again later."
+        )
     # Support both Form URL-encoded and JSON body
     username: Optional[str] = None
     password: Optional[str] = None
@@ -39,6 +45,7 @@ async def login(
 
     user = db.query(models.User).filter(models.User.email == username.strip().lower()).first()
     if not user or not auth.verify_password(password, user.password_hash):
+        auth.record_failed_attempt(client_ip)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",

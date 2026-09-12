@@ -1,3 +1,7 @@
+import time
+
+NEGOTIATION_LOCKS = {}
+NEGOTIATION_COOLDOWN = 10
 import json
 import logging
 from typing import Any, Dict, List, Optional
@@ -219,300 +223,314 @@ def run_autonomous_negotiation_endpoint(
     pr_id: int,
     db: Session = Depends(get_db),
 ):
-    pr = db.query(PurchaseRequest).filter(PurchaseRequest.id == pr_id).first()
-    if not pr:
-        raise HTTPException(status_code=404, detail="Purchase request not found")
+    current_time = time.time()
+    lock_info = NEGOTIATION_LOCKS.get(pr_id)
+    if lock_info:
+        status_state, timestamp = lock_info
+        if status_state == 'RUNNING':
+            raise HTTPException(status_code=409, detail='A negotiation for this PR is already in progress.')
+        elif status_state == 'COOLDOWN' and current_time - timestamp < NEGOTIATION_COOLDOWN:
+            raise HTTPException(status_code=409, detail='A negotiation for this PR recently completed. Please wait.')
 
-    bids = (
-        db.query(VendorBid)
-        .filter(VendorBid.pr_id == pr_id)
-        .order_by(VendorBid.bid_score.desc())
-        .all()
-    )
-    if not bids:
-        raise HTTPException(status_code=404, detail="No vendor bids found")
+    NEGOTIATION_LOCKS[pr_id] = ('RUNNING', current_time)
+    try:
+        pr = db.query(PurchaseRequest).filter(PurchaseRequest.id == pr_id).first()
+        if not pr:
+            raise HTTPException(status_code=404, detail="Purchase request not found")
 
-    candidates = []
-    for bid in bids:
-        active_session = (
-            db.query(NegotiationSession)
-            .filter(
-                NegotiationSession.vendor_bid_id == bid.id,
-                NegotiationSession.status.in_(
-                    ["INITIATED", "NEGOTIATING", "ESCALATED", "PENDING_APPROVAL", "RESUMED", "PENDING_GOV_APPROVAL", "PENDING_VENDOR_APPROVAL"]
-                ),
+        bids = (
+            db.query(VendorBid)
+            .filter(VendorBid.pr_id == pr_id)
+            .order_by(VendorBid.bid_score.desc())
+            .all()
+        )
+        if not bids:
+            raise HTTPException(status_code=404, detail="No vendor bids found")
+
+        candidates = []
+        for bid in bids:
+            active_session = (
+                db.query(NegotiationSession)
+                .filter(
+                    NegotiationSession.vendor_bid_id == bid.id,
+                    NegotiationSession.status.in_(
+                        ["INITIATED", "NEGOTIATING", "ESCALATED", "PENDING_APPROVAL", "RESUMED", "PENDING_GOV_APPROVAL", "PENDING_VENDOR_APPROVAL"]
+                    ),
+                )
+                .first()
             )
-            .first()
-        )
-        if active_session:
-            continue
+            if active_session:
+                continue
 
-        vendor = db.query(Vendor).filter(Vendor.id == bid.vendor_id).first()
-        if not vendor:
-            continue
+            vendor = db.query(Vendor).filter(Vendor.id == bid.vendor_id).first()
+            if not vendor:
+                continue
 
-        candidates.append((bid, vendor))
-        if len(candidates) == 3:
-            break
+            candidates.append((bid, vendor))
+            if len(candidates) == 3:
+                break
 
-    if not candidates:
-        raise HTTPException(
-            status_code=409,
-            detail="All eligible vendor bids already have active negotiation sessions",
-        )
-
-    results: List[VendorNegotiationResultOut] = []
-    sessions: List[NegotiationSession] = []
-    any_escalated = False
-    all_completed = True
-
-    total_initial_spend = 0.0
-    total_negotiated_spend = 0.0
-
-    for bid, vendor in candidates:
-        if bid.original_quoted_price is None:
-            bid.original_quoted_price = bid.quoted_price
-        if bid.original_delivery_days is None:
-            bid.original_delivery_days = bid.delivery_days
-
-        session_count = (
-            db.query(NegotiationSession)
-            .filter(NegotiationSession.vendor_bid_id == bid.id)
-            .count()
-        )
-
-        # 1. Persist NegotiationSession using only existing models.py fields
-        session = NegotiationSession(
-            vendor_bid_id=bid.id,
-            session_number=session_count + 1,
-            status="INITIATED",
-            current_round=0,
-            current_price=bid.quoted_price,
-            current_delivery_days=bid.delivery_days,
-            version=1,
-        )
-        db.add(session)
-        db.flush()
-
-        # 2. Persist GovNegotiationState
-        budget = float(pr.estimated_budget)
-        gov_target = round(min(float(bid.quoted_price) * 0.85, budget * 0.95), 2)
-        gov_max = budget
-        gov_target_days = max(1, int(bid.delivery_days) - 3)
-        gov_max_days = int(bid.delivery_days) + 5
-
-        gov_state_record = GovNegotiationState(
-            negotiation_session_id=session.id,
-            target_price=gov_target,
-            max_authorized_price=gov_max,
-            target_delivery=gov_target_days,
-            max_delivery=gov_max_days,
-            strategy="Maximize cost savings within department budget ceiling",
-        )
-        db.add(gov_state_record)
-
-        # 3. Persist VendorNegotiationState
-        vendor_target = float(bid.quoted_price)
-        vendor_floor = round(float(bid.quoted_price) * 0.80, 2)
-        vendor_fastest = max(1, int(vendor.avg_delivery_days or bid.delivery_days))
-
-        vendor_state_record = VendorNegotiationState(
-            negotiation_session_id=session.id,
-            target_price=vendor_target,
-            absolute_minimum_price=vendor_floor,
-            feasible_delivery=vendor_fastest,
-            strategy="Protect profit margin and guarantee feasible delivery timeline",
-        )
-        db.add(vendor_state_record)
-        db.flush()
-
-        # 4. Construct bilateral graph state
-        initial_state: GraphNegotiationState = {
-            "shared": {
-                "session_id": session.id,
-                "pr_id": pr.id,
-                "pr_title": pr.title,
-                "item_description": pr.item_description or "",
-                "quantity": pr.quantity,
-                "current_round": 0,
-                "status": "INITIATED",
-                "events": [],
-            },
-            "gov": {
-                "target_price": gov_target,
-                "max_authorized_price": gov_max,
-                "target_delivery": gov_target_days,
-                "max_delivery": gov_max_days,
-                "strategy": gov_state_record.strategy,
-            },
-            "vendor": {
-                "target_price": vendor_target,
-                "absolute_minimum_price": vendor_floor,
-                "feasible_delivery": vendor_fastest,
-                "strategy": vendor_state_record.strategy,
-            },
-            "next_actor": "GOV_AGENT",
-        }
-
-        # 5. Execute LangGraph bilateral negotiation
-        final_state = run_bilateral_negotiation(initial_state)
-
-        # 6. Persist NegotiationEvent records with exact model fields
-        event_outs: List[NegotiationEventOut] = []
-        last_price = float(bid.quoted_price)
-        last_days = int(bid.delivery_days)
-
-        for ev in final_state["shared"]["events"]:
-            ev_price = ev.get("price")
-            ev_days = ev.get("delivery_days")
-            if ev_price is not None:
-                last_price = float(ev_price)
-            if ev_days is not None:
-                last_days = int(ev_days)
-
-            event_record = NegotiationEvent(
-                negotiation_session_id=session.id,
-                round=int(ev.get("round", 0)),
-                speaker_role=str(ev.get("speaker_role", "SYSTEM")),
-                event_type=str(ev.get("event_type", "OFFER")),
-                price=float(ev_price) if ev_price is not None else None,
-                delivery_days=int(ev_days) if ev_days is not None else None,
-                message=str(ev.get("message", "")),
+        if not candidates:
+            raise HTTPException(
+                status_code=409,
+                detail="All eligible vendor bids already have active negotiation sessions",
             )
-            db.add(event_record)
+
+        results: List[VendorNegotiationResultOut] = []
+        sessions: List[NegotiationSession] = []
+        any_escalated = False
+        all_completed = True
+
+        total_initial_spend = 0.0
+        total_negotiated_spend = 0.0
+
+        for bid, vendor in candidates:
+            if bid.original_quoted_price is None:
+                bid.original_quoted_price = bid.quoted_price
+            if bid.original_delivery_days is None:
+                bid.original_delivery_days = bid.delivery_days
+
+            session_count = (
+                db.query(NegotiationSession)
+                .filter(NegotiationSession.vendor_bid_id == bid.id)
+                .count()
+            )
+
+            # 1. Persist NegotiationSession using only existing models.py fields
+            session = NegotiationSession(
+                vendor_bid_id=bid.id,
+                session_number=session_count + 1,
+                status="INITIATED",
+                current_round=0,
+                current_price=bid.quoted_price,
+                current_delivery_days=bid.delivery_days,
+                version=1,
+            )
+            db.add(session)
             db.flush()
 
-            event_outs.append(
-                NegotiationEventOut(
-                    id=event_record.id,
-                    round=event_record.round,
-                    speaker_role=event_record.speaker_role,
-                    event_type=event_record.event_type,
-                    price=event_record.price,
-                    delivery_days=event_record.delivery_days,
-                    message=event_record.message,
-                    created_at=event_record.created_at,
+            # 2. Persist GovNegotiationState
+            budget = float(pr.estimated_budget)
+            gov_target = round(min(float(bid.quoted_price) * 0.85, budget * 0.95), 2)
+            gov_max = budget
+            gov_target_days = max(1, int(bid.delivery_days) - 3)
+            gov_max_days = int(bid.delivery_days) + 5
+
+            gov_state_record = GovNegotiationState(
+                negotiation_session_id=session.id,
+                target_price=gov_target,
+                max_authorized_price=gov_max,
+                target_delivery=gov_target_days,
+                max_delivery=gov_max_days,
+                strategy="Maximize cost savings within department budget ceiling",
+            )
+            db.add(gov_state_record)
+
+            # 3. Persist VendorNegotiationState
+            vendor_target = float(bid.quoted_price)
+            vendor_floor = round(float(bid.quoted_price) * 0.80, 2)
+            vendor_fastest = max(1, int(vendor.avg_delivery_days or bid.delivery_days))
+
+            vendor_state_record = VendorNegotiationState(
+                negotiation_session_id=session.id,
+                target_price=vendor_target,
+                absolute_minimum_price=vendor_floor,
+                feasible_delivery=vendor_fastest,
+                strategy="Protect profit margin and guarantee feasible delivery timeline",
+            )
+            db.add(vendor_state_record)
+            db.flush()
+
+            # 4. Construct bilateral graph state
+            initial_state: GraphNegotiationState = {
+                "shared": {
+                    "session_id": session.id,
+                    "pr_id": pr.id,
+                    "pr_title": pr.title,
+                    "item_description": pr.item_description or "",
+                    "quantity": pr.quantity,
+                    "current_round": 0,
+                    "status": "INITIATED",
+                    "events": [],
+                },
+                "gov": {
+                    "target_price": gov_target,
+                    "max_authorized_price": gov_max,
+                    "target_delivery": gov_target_days,
+                    "max_delivery": gov_max_days,
+                    "strategy": gov_state_record.strategy,
+                },
+                "vendor": {
+                    "target_price": vendor_target,
+                    "absolute_minimum_price": vendor_floor,
+                    "feasible_delivery": vendor_fastest,
+                    "strategy": vendor_state_record.strategy,
+                },
+                "next_actor": "GOV_AGENT",
+            }
+
+            # 5. Execute LangGraph bilateral negotiation
+            final_state = run_bilateral_negotiation(initial_state)
+
+            # 6. Persist NegotiationEvent records with exact model fields
+            event_outs: List[NegotiationEventOut] = []
+            last_price = float(bid.quoted_price)
+            last_days = int(bid.delivery_days)
+
+            for ev in final_state["shared"]["events"]:
+                ev_price = ev.get("price")
+                ev_days = ev.get("delivery_days")
+                if ev_price is not None:
+                    last_price = float(ev_price)
+                if ev_days is not None:
+                    last_days = int(ev_days)
+
+                event_record = NegotiationEvent(
+                    negotiation_session_id=session.id,
+                    round=int(ev.get("round", 0)),
+                    speaker_role=str(ev.get("speaker_role", "SYSTEM")),
+                    event_type=str(ev.get("event_type", "OFFER")),
+                    price=float(ev_price) if ev_price is not None else None,
+                    delivery_days=int(ev_days) if ev_days is not None else None,
+                    message=str(ev.get("message", "")),
+                )
+                db.add(event_record)
+                db.flush()
+
+                event_outs.append(
+                    NegotiationEventOut(
+                        id=event_record.id,
+                        round=event_record.round,
+                        speaker_role=event_record.speaker_role,
+                        event_type=event_record.event_type,
+                        price=event_record.price,
+                        delivery_days=event_record.delivery_days,
+                        message=event_record.message,
+                        created_at=event_record.created_at,
+                    )
+                )
+
+            # 7. Update session status and record policy decisions
+            raw_status = final_state["shared"].get("status", "NEGOTIATING")
+            if raw_status in ["ACCEPTED", "ACCEPT"]:
+                final_status = "ACCEPTED"
+                action = "ACCEPT"
+            elif raw_status in ["PENDING_GOV_APPROVAL", "ESCALATED", "ESCALATE"]:
+                final_status = "PENDING_GOV_APPROVAL"
+                action = "ESCALATE"
+            elif raw_status == "PENDING_VENDOR_APPROVAL":
+                final_status = "PENDING_VENDOR_APPROVAL"
+                action = "ESCALATE"
+            elif raw_status in ["REJECTED", "REJECT"]:
+                final_status = "REJECTED"
+                action = "REJECT"
+            else:
+                final_status = "NEGOTIATING"
+                action = "CONTINUE"
+
+            session.status = final_status
+            session.current_round = final_state["shared"].get("current_round", 0)
+            session.current_price = last_price
+            session.current_delivery_days = last_days
+
+            esc_role = "VENDOR" if final_status == "PENDING_VENDOR_APPROVAL" else "GOVERNMENT"
+            rule_desc = "VENDOR_MIN_PRICE_FLOOR" if final_status == "PENDING_VENDOR_APPROVAL" else "GOV_MAX_PRICE_CEILING"
+
+            policy_decision = PolicyDecision(
+                negotiation_session_id=session.id,
+                role=esc_role if action == "ESCALATE" else "GOVERNMENT",
+                round=session.current_round,
+                evaluated_price=last_price,
+                evaluated_delivery_days=last_days,
+                decision=action,
+                rule_triggered=f"{rule_desc if action == 'ESCALATE' else 'Bilateral policy outcome'}: {final_status}",
+                threshold_value=str(gov_max if esc_role == 'GOVERNMENT' else vendor_floor),
+                actual_value=str(last_price),
+            )
+            db.add(policy_decision)
+
+            escalation_id = None
+            if action == "ESCALATE":
+                any_escalated = True
+                all_completed = False
+                esc_reason = (
+                    f"Government proposal of ₹{last_price:,.2f} ({last_days} days) crosses vendor commercial authorization boundary."
+                    if final_status == "PENDING_VENDOR_APPROVAL"
+                    else f"Vendor proposal of ₹{last_price:,.2f} ({last_days} days) exceeds government procurement ceiling."
+                )
+                escalation = NegotiationEscalation(
+                    negotiation_session_id=session.id,
+                    role=esc_role,
+                    reason=esc_reason,
+                    requested_price=last_price,
+                    requested_delivery_days=last_days,
+                    status="PENDING",
+                )
+                db.add(escalation)
+                db.flush()
+                escalation_id = escalation.id
+            elif action == "ACCEPT":
+                bid.quoted_price = last_price
+                bid.delivery_days = last_days
+                bid.bid_score = calculate_bid_score(bid, vendor, pr.estimated_budget)
+            elif action == "CONTINUE":
+                all_completed = False
+
+            initial_p = float(bid.original_quoted_price)
+            savings = max(0.0, initial_p - float(last_price))
+            savings_pct = (savings / initial_p * 100.0) if initial_p > 0 else 0.0
+
+            total_initial_spend += initial_p
+            total_negotiated_spend += float(last_price)
+
+            results.append(
+                VendorNegotiationResultOut(
+                    vendor_id=vendor.id,
+                    vendor_name=vendor.name,
+                    final_price=round(last_price, 2),
+                    final_days=int(last_days),
+                    savings=round(savings, 2),
+                    savings_percentage=round(savings_pct, 2),
+                    status=session.status,
+                    action=action,
+                    is_fallback=False,
+                    events=event_outs,
+                    session_id=session.id,
+                    escalation_id=escalation_id,
                 )
             )
+            sessions.append(session)
 
-        # 7. Update session status and record policy decisions
-        raw_status = final_state["shared"].get("status", "NEGOTIATING")
-        if raw_status in ["ACCEPTED", "ACCEPT"]:
-            final_status = "ACCEPTED"
-            action = "ACCEPT"
-        elif raw_status in ["PENDING_GOV_APPROVAL", "ESCALATED", "ESCALATE"]:
-            final_status = "PENDING_GOV_APPROVAL"
-            action = "ESCALATE"
-        elif raw_status == "PENDING_VENDOR_APPROVAL":
-            final_status = "PENDING_VENDOR_APPROVAL"
-            action = "ESCALATE"
-        elif raw_status in ["REJECTED", "REJECT"]:
-            final_status = "REJECTED"
-            action = "REJECT"
-        else:
-            final_status = "NEGOTIATING"
-            action = "CONTINUE"
+        db.commit()
 
-        session.status = final_status
-        session.current_round = final_state["shared"].get("current_round", 0)
-        session.current_price = last_price
-        session.current_delivery_days = last_days
+        total_net_savings = max(0.0, total_initial_spend - total_negotiated_spend)
+        total_savings_pct = (total_net_savings / total_initial_spend * 100.0) if total_initial_spend > 0 else 0.0
 
-        esc_role = "VENDOR" if final_status == "PENDING_VENDOR_APPROVAL" else "GOVERNMENT"
-        rule_desc = "VENDOR_MIN_PRICE_FLOOR" if final_status == "PENDING_VENDOR_APPROVAL" else "GOV_MAX_PRICE_CEILING"
+        # Determine top vendor from updated recommendations
+        fresh_recs = build_recommendations(db, pr)
+        top_v_id = fresh_recs[0].vendor_id if fresh_recs else None
+        top_v_name = fresh_recs[0].vendor_name if fresh_recs else None
 
-        policy_decision = PolicyDecision(
-            negotiation_session_id=session.id,
-            role=esc_role if action == "ESCALATE" else "GOVERNMENT",
-            round=session.current_round,
-            evaluated_price=last_price,
-            evaluated_delivery_days=last_days,
-            decision=action,
-            rule_triggered=f"{rule_desc if action == 'ESCALATE' else 'Bilateral policy outcome'}: {final_status}",
-            threshold_value=str(gov_max if esc_role == 'GOVERNMENT' else vendor_floor),
-            actual_value=str(last_price),
+        return NegotiationResponse(
+            pr_id=pr.id,
+            pr_title=pr.title,
+            estimated_budget=pr.estimated_budget,
+            total_initial_spend=round(total_initial_spend, 2),
+            total_negotiated_spend=round(total_negotiated_spend, 2),
+            total_savings=round(total_net_savings, 2),
+            total_savings_pct=round(total_savings_pct, 2),
+            top_vendor_id=top_v_id,
+            top_vendor_name=top_v_name,
+            results=results,
+            recommendations=fresh_recs,
+            completed=all_completed and not any_escalated,
+            escalated=any_escalated,
+            sessions=sessions,
         )
-        db.add(policy_decision)
 
-        escalation_id = None
-        if action == "ESCALATE":
-            any_escalated = True
-            all_completed = False
-            esc_reason = (
-                f"Government proposal of ₹{last_price:,.2f} ({last_days} days) crosses vendor commercial authorization boundary."
-                if final_status == "PENDING_VENDOR_APPROVAL"
-                else f"Vendor proposal of ₹{last_price:,.2f} ({last_days} days) exceeds government procurement ceiling."
-            )
-            escalation = NegotiationEscalation(
-                negotiation_session_id=session.id,
-                role=esc_role,
-                reason=esc_reason,
-                requested_price=last_price,
-                requested_delivery_days=last_days,
-                status="PENDING",
-            )
-            db.add(escalation)
-            db.flush()
-            escalation_id = escalation.id
-        elif action == "ACCEPT":
-            bid.quoted_price = last_price
-            bid.delivery_days = last_days
-            bid.bid_score = calculate_bid_score(bid, vendor, pr.estimated_budget)
-        elif action == "CONTINUE":
-            all_completed = False
 
-        initial_p = float(bid.original_quoted_price)
-        savings = max(0.0, initial_p - float(last_price))
-        savings_pct = (savings / initial_p * 100.0) if initial_p > 0 else 0.0
-
-        total_initial_spend += initial_p
-        total_negotiated_spend += float(last_price)
-
-        results.append(
-            VendorNegotiationResultOut(
-                vendor_id=vendor.id,
-                vendor_name=vendor.name,
-                final_price=round(last_price, 2),
-                final_days=int(last_days),
-                savings=round(savings, 2),
-                savings_percentage=round(savings_pct, 2),
-                status=session.status,
-                action=action,
-                is_fallback=False,
-                events=event_outs,
-                session_id=session.id,
-                escalation_id=escalation_id,
-            )
-        )
-        sessions.append(session)
-
-    db.commit()
-
-    total_net_savings = max(0.0, total_initial_spend - total_negotiated_spend)
-    total_savings_pct = (total_net_savings / total_initial_spend * 100.0) if total_initial_spend > 0 else 0.0
-
-    # Determine top vendor from updated recommendations
-    fresh_recs = build_recommendations(db, pr)
-    top_v_id = fresh_recs[0].vendor_id if fresh_recs else None
-    top_v_name = fresh_recs[0].vendor_name if fresh_recs else None
-
-    return NegotiationResponse(
-        pr_id=pr.id,
-        pr_title=pr.title,
-        estimated_budget=pr.estimated_budget,
-        total_initial_spend=round(total_initial_spend, 2),
-        total_negotiated_spend=round(total_negotiated_spend, 2),
-        total_savings=round(total_net_savings, 2),
-        total_savings_pct=round(total_savings_pct, 2),
-        top_vendor_id=top_v_id,
-        top_vendor_name=top_v_name,
-        results=results,
-        recommendations=fresh_recs,
-        completed=all_completed and not any_escalated,
-        escalated=any_escalated,
-        sessions=sessions,
-    )
-
+    finally:
+        NEGOTIATION_LOCKS[pr_id] = ('COOLDOWN', time.time())
 
 @router.get("/negotiations")
 def list_all_negotiations(db: Session = Depends(get_db)):

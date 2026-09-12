@@ -56,21 +56,40 @@ try:
 except Exception:
     pass
 
+enable_docs = os.getenv("ENABLE_API_DOCS", "true").lower() == "true"
 app = FastAPI(
     title="LokProcure - NetSuite-Aligned Intelligent Dual-Sided ERP Procurement",
     version="1.0.0",
+    docs_url="/docs" if enable_docs else None,
+    redoc_url="/redoc" if enable_docs else None,
+    openapi_url="/openapi.json" if enable_docs else None,
 )
+
+cors_origins_env = os.getenv("CORS_ORIGINS")
+if cors_origins_env:
+    allow_origins = [origin.strip() for origin in cors_origins_env.split(",") if origin.strip()]
+else:
+    allow_origins = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ],
+    allow_origins=allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def add_security_headers(request, call_next):
+    response = await call_next(request)
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
+
 
 # Authentication routes -> /api/auth/login, /api/auth/me
 app.include_router(auth.router, prefix="/api", tags=["Authentication"])
