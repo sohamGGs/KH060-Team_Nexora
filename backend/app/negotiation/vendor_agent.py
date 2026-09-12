@@ -71,19 +71,19 @@ def run_vendor_agent(state: GraphNegotiationState) -> GraphNegotiationState:
             event_type = "ACCEPT"
             offered_price = g_price
             offered_days = g_days
-            message = f"Quotation accepted at government proposed terms: ${g_price:,.2f} in {g_days} days."
+            message = f"Quotation accepted at government proposed terms: ₹{g_price:,.2f} in {g_days} days."
         elif g_price >= vendor["absolute_minimum_price"]:
             has_vendor_approval = any(e.get("event_type") in ["HUMAN_VENDOR_APPROVAL", "HUMAN_OVERRIDE"] for e in shared["events"])
             if has_vendor_approval or current_round >= 2 or abs(g_price - vendor["absolute_minimum_price"]) < 100:
                 event_type = "ACCEPT"
                 offered_price = g_price
                 offered_days = max(g_days, int(vendor["feasible_delivery"]))
-                message = f"Commercial concession approved: Conceding to government offer of ${g_price:,.2f}." if has_vendor_approval else f"Agreement reached: Conceding to government offer of ${g_price:,.2f}."
+                message = f"Commercial concession approved: Conceding to government offer of ₹{g_price:,.2f}." if has_vendor_approval else f"Agreement reached: Conceding to government offer of ₹{g_price:,.2f}."
             else:
                 event_type = "OFFER"
                 offered_price = round((g_price + vendor["target_price"]) / 2.0, 2)
                 offered_days = max(g_days, int(vendor["feasible_delivery"]))
-                message = f"Counter-offering ${offered_price:,.2f} with production scheduling of {offered_days} days."
+                message = f"Counter-offering ₹{offered_price:,.2f} with production scheduling of {offered_days} days."
         else:
             # Below absolute minimum floor or delivery faster than feasible
             if current_round >= 1 or (last_gov_event and last_gov_event.get("speaker_role") in ["GOV_HUMAN", "HUMAN_GOV"]):
@@ -91,12 +91,12 @@ def run_vendor_agent(state: GraphNegotiationState) -> GraphNegotiationState:
                 offered_price = g_price
                 offered_days = g_days
                 # Crucial for privacy: Never leak private floor in public event message
-                message = f"Government proposal of ${g_price:,.2f} ({g_days} days) is below commercial authorization limits. Escalating to vendor management for concession review."
+                message = f"Government proposal of ₹{g_price:,.2f} ({g_days} days) is below commercial authorization limits. Escalating to vendor management for concession review."
             else:
                 event_type = "OFFER"
                 offered_price = round(max(vendor["absolute_minimum_price"], vendor["target_price"] * 0.95), 2)
                 offered_days = int(vendor["feasible_delivery"])
-                message = f"Proposed terms require concession. Best possible counter-offer is ${offered_price:,.2f} at {offered_days} delivery days."
+                message = f"Proposed terms require concession. Best possible counter-offer is ₹{offered_price:,.2f} at {offered_days} delivery days."
 
         result = {
             "event_type": event_type,

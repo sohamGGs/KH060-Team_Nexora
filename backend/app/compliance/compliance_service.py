@@ -29,13 +29,13 @@ def run_heuristic_compliance_guard(pr_data: Dict[str, Any], retrieved_policies: 
     violations = []
     actions = []
 
-    # 1. Department Spend Cap Rule (Supply Chain & Operations: $150k, Others: $75k)
+    # 1. Department Spend Cap Rule (Supply Chain & Operations: ₹1,50,000, Others: ₹75,000)
     has_vp_signoff = "vp operations" in full_text or "vp sign-off" in full_text or "approved by vp" in full_text
     if department in ["Supply Chain", "Operations"]:
         if budget > 150000 and not has_vp_signoff:
             violations.append({
                 "rule_name": "Department Spend Cap Rule",
-                "explanation": f"Request amount of ${budget:,.2f} exceeds the {department} departmental cap of $150,000 without explicit VP Operations sign-off noted.",
+                "explanation": f"Request amount of ₹{budget:,.2f} exceeds the {department} departmental cap of ₹1,50,000 without explicit VP Operations sign-off noted.",
                 "severity": "High"
             })
             actions.append("Obtain and record explicit VP Operations sign-off in the purchase request description.")
@@ -43,10 +43,10 @@ def run_heuristic_compliance_guard(pr_data: Dict[str, Any], retrieved_policies: 
         if budget > 75000 and not has_vp_signoff:
             violations.append({
                 "rule_name": "Department Spend Cap Rule",
-                "explanation": f"Request amount of ${budget:,.2f} exceeds the {department} departmental cap of $75,000 without explicit VP Operations sign-off noted.",
+                "explanation": f"Request amount of ₹{budget:,.2f} exceeds the {department} departmental cap of ₹75,000 without explicit VP Operations sign-off noted.",
                 "severity": "High"
             })
-            actions.append(f"Obtain VP Operations authorization for {department} expenditure exceeding $75,000 threshold.")
+            actions.append(f"Obtain VP Operations authorization for {department} expenditure exceeding ₹75,000 threshold.")
 
     # 2. Vendor Contract Auto-Renewal Disclosure Rule
     recurring_keywords = ["recurring", "subscription", "annual", "retainer", "ongoing"]
@@ -73,11 +73,11 @@ def run_heuristic_compliance_guard(pr_data: Dict[str, Any], retrieved_policies: 
             })
             actions.append("Update item description with specific business and operational justification explaining the critical timeline constraint.")
 
-    # 4. Budget Threshold Sourcing Rule (> $50k requires 2+ bids)
+    # 4. Budget Threshold Sourcing Rule (> ₹50,000 requires 2+ bids)
     if budget > 50000 and bids_count < 2:
         violations.append({
             "rule_name": "Budget Threshold Sourcing Rule",
-            "explanation": f"Estimated budget of ${budget:,.2f} exceeds $50,000 threshold but has fewer than two competing vendor bids.",
+            "explanation": f"Estimated budget of ₹{budget:,.2f} exceeds ₹50,000 threshold but has fewer than two competing vendor bids.",
             "severity": "High"
         })
         actions.append("Solicit at least two competitive vendor quotations before routing to Finance Director for approval.")
@@ -88,7 +88,7 @@ def run_heuristic_compliance_guard(pr_data: Dict[str, Any], retrieved_policies: 
     if is_sole_sourced and budget >= 10000 and urgency != "Critical":
         violations.append({
             "rule_name": "Single-Vendor Sole-Sourcing Restriction",
-            "explanation": f"Sole-sourcing is restricted for budgets of $10,000 or higher (${budget:,.2f} requested) without critical urgency and delivery justification.",
+            "explanation": f"Sole-sourcing is restricted for budgets of ₹10,000 or higher (₹{budget:,.2f} requested) without critical urgency and delivery justification.",
             "severity": "High"
         })
         actions.append("Submit formal written sole-sourcing justification or initiate competitive RFQ distribution.")
@@ -118,7 +118,7 @@ def evaluate_compliance(pr_data: Dict[str, Any]) -> Dict[str, Any]:
 
         query_text = (
             f"Title: {pr_data.get('title')} | Description: {pr_data.get('item_description')} | "
-            f"Department: {pr_data.get('department')} | Budget: ${pr_data.get('estimated_budget')} | "
+            f"Department: {pr_data.get('department')} | Budget: ₹{pr_data.get('estimated_budget')} | "
             f"Urgency: {pr_data.get('urgency')} | Quantity: {pr_data.get('quantity')}"
         )
 
@@ -159,7 +159,7 @@ Evaluate this Purchase Request (PR) against the RETRIEVED COMPANY POLICIES below
 - Title: {pr_data.get('title')}
 - Description: {pr_data.get('item_description')}
 - Department: {pr_data.get('department')}
-- Estimated Budget: ${pr_data.get('estimated_budget')}
+- Estimated Budget: ₹{pr_data.get('estimated_budget')}
 - Urgency: {pr_data.get('urgency')}
 - Quantity: {pr_data.get('quantity')}
 - Active Vendor Bids Count: {pr_data.get('bids_count', 8)}

@@ -242,7 +242,7 @@ def seed_database():
 
         print("[INFO] Seeding Realistic Sample Purchase Requests & Bids...")
 
-        # PR 1: Rule 1 Trigger (Budget > $100k AND Operations -> Plant Head) -> PO Created & Delivered (3-Way Match)
+        # PR 1: Rule 1 Trigger (Budget > ₹1,00,000 AND Operations -> Plant Head) -> PO Created & Delivered (3-Way Match)
         admin_user = user_map["Lead Procurement Officer"]
         plant_head = user_map["Plant Head"]
         vp_ops = user_map["VP Operations"]
@@ -268,7 +268,7 @@ def seed_database():
         wf1 = models.ApprovalWorkflow(
             pr_id=pr1.id,
             approver_id=plant_head.id,
-            triggered_rule="Rule 1: Operations CapEx > $100k requires Plant Head Approval",
+            triggered_rule="Rule 1: Operations CapEx > ₹1,00,000 requires Plant Head Approval",
             status="Approved",
             comment="Approved. Plant expansion Capex budget verified against Q3 operational plan.",
             created_at=datetime.datetime.utcnow() - datetime.timedelta(days=12),
@@ -318,7 +318,7 @@ def seed_database():
         db.add(wf2)
         db.commit()
 
-        # PR 3: Rule 3 Trigger (Budget > $50k -> Finance Director) -> Pending Approval
+        # PR 3: Rule 3 Trigger (Budget > ₹50,000 -> Finance Director) -> Pending Approval
         pr3 = models.PurchaseRequest(
             title="Enterprise Cloud Server Blade Cluster & Fibre SAN Switch",
             item_description="Redundant high-availability cluster servers for ERP NetSuite database migration and disaster recovery.",
@@ -338,7 +338,7 @@ def seed_database():
         wf3 = models.ApprovalWorkflow(
             pr_id=pr3.id,
             approver_id=fin_dir.id,
-            triggered_rule="Rule 3: High Value (> $50,000) requires Finance Director Approval",
+            triggered_rule="Rule 3: High Value (> ₹50,000) requires Finance Director Approval",
             status="Pending",
             comment="Pending IT infrastructure Capex budget allocation verification.",
             created_at=datetime.datetime.utcnow() - datetime.timedelta(hours=18)

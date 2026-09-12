@@ -70,7 +70,7 @@ def run_gov_agent(state: GraphNegotiationState) -> GraphNegotiationState:
             event_type = "OFFER"
             offered_price = round(gov["target_price"], 2)
             offered_days = int(gov["target_delivery"])
-            message = f"Opening bilateral offer: Proposing ${offered_price:,.2f} with delivery in {offered_days} days."
+            message = f"Opening bilateral offer: Proposing ₹{offered_price:,.2f} with delivery in {offered_days} days."
         else:
             v_price = float(last_vendor_event.get("price", gov["target_price"]))
             v_days = int(last_vendor_event.get("delivery_days", gov["target_delivery"]))
@@ -80,18 +80,18 @@ def run_gov_agent(state: GraphNegotiationState) -> GraphNegotiationState:
                 event_type = "ACCEPT"
                 offered_price = v_price
                 offered_days = v_days
-                message = f"Executive approval granted: Accepting vendor offer of ${v_price:,.2f} ({v_days} days)." if has_gov_approval else f"Agreement reached: Accepting vendor offer of ${v_price:,.2f} ({v_days} days)."
+                message = f"Executive approval granted: Accepting vendor offer of ₹{v_price:,.2f} ({v_days} days)." if has_gov_approval else f"Agreement reached: Accepting vendor offer of ₹{v_price:,.2f} ({v_days} days)."
             elif v_price <= gov["max_authorized_price"]:
                 event_type = "OFFER"
                 offered_price = round(max(gov["target_price"], v_price * 0.95), 2)
                 offered_days = min(v_days, gov["max_delivery"])
-                message = f"Counter-offering ${offered_price:,.2f} with {offered_days} delivery days to meet department budget."
+                message = f"Counter-offering ₹{offered_price:,.2f} with {offered_days} delivery days to meet department budget."
             else:
                 event_type = "ESCALATE"
                 offered_price = v_price
                 offered_days = v_days
                 # Crucial for privacy: Never leak private ceiling number in public event message
-                message = f"Price ${v_price:,.2f} exceeds maximum authorized ceiling for this procurement. Escalating to procurement lead."
+                message = f"Price ₹{v_price:,.2f} exceeds maximum authorized ceiling for this procurement. Escalating to procurement lead."
 
         result = {
             "event_type": event_type,

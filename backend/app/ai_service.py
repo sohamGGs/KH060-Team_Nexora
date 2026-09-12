@@ -52,7 +52,7 @@ def run_heuristic_audit(pr_data: Dict[str, Any], bids_data: List[Dict[str, Any]]
 
     advantages = [
         f"Top composite vendor score of {total_score:.1f}/100 based on price, reliability, and past performance history.",
-        f"Quoted price of ${quoted_price:,.2f} delivers estimated net savings of ${savings:,.2f} against the authorized ${budget:,.2f} budget.",
+        f"Quoted price of ₹{quoted_price:,.2f} delivers estimated net savings of ₹{savings:,.2f} against the authorized ₹{budget:,.2f} budget.",
         f"Committed delivery turnaround of {delivery_days} days aligns with {urgency} operational SLA requirements.",
         f"Strong historical reliability index of {reliability:.1f}% backed by verified quality and accuracy ratings."
     ]
@@ -65,7 +65,7 @@ def run_heuristic_audit(pr_data: Dict[str, Any], bids_data: List[Dict[str, Any]]
         risk_factors.append(f"Fulfillment timeline ({delivery_days} days) for {urgency} urgency requires expedited transit monitoring.")
     if quoted_price > budget:
         risk_level = "Moderate"
-        risk_factors.append(f"Quoted quotation exceeds estimated budget by ${quoted_price - budget:,.2f}.")
+        risk_factors.append(f"Quoted quotation exceeds estimated budget by ₹{quoted_price - budget:,.2f}.")
     if tier == "Economy Tier" and reliability < 88.0:
         risk_factors.append("Economy tier supplier with moderate historical buffer; requires milestone tracking.")
 
@@ -78,7 +78,7 @@ def run_heuristic_audit(pr_data: Dict[str, Any], bids_data: List[Dict[str, Any]]
 
     summary = (
         f"AI Audit recommends award to {vendor_name} ({tier}). The bid provides the optimal balance of commercial cost efficiency "
-        f"(${quoted_price:,.2f} vs ${budget:,.2f} budget) and execution reliability ({reliability}% score). "
+        f"(₹{quoted_price:,.2f} vs ₹{budget:,.2f} budget) and execution reliability ({reliability}% score). "
         f"Fulfillment is projected at {delivery_days} business days."
     )
 
@@ -124,7 +124,7 @@ Evaluate this Purchase Request (PR) and the submitted Vendor Quotation Bids to r
 - Quantity: {pr_data.get('quantity')}
 - Urgency: {pr_data.get('urgency')}
 - Department: {pr_data.get('department')}
-- Estimated Budget: ${pr_data.get('estimated_budget')}
+- Estimated Budget: ₹{pr_data.get('estimated_budget')}
 
 ### VENDOR BIDS (Ranked with Weighted Scoring Formula: Price 30%, Delivery 25%, Reliability 25%, History 20%):
 {json.dumps(bids_data, indent=2)}
