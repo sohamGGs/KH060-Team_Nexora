@@ -13,7 +13,9 @@ from app import models, schemas
 
 load_dotenv()
 
-SECRET_KEY = os.getenv("SECRET_KEY", "procureiq-zenesys-2026-secret-key-hackathon")
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY or SECRET_KEY == "procureiq-zenesys-2026-secret-key-hackathon":
+    raise ValueError("FATAL: SECRET_KEY environment variable is not securely set.")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
 

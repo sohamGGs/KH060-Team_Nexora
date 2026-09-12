@@ -43,7 +43,7 @@ def get_my_bids(
 ):
     vendor = db.query(models.Vendor).filter(models.Vendor.name == current_user.department).first()
     if not vendor:
-        vendor = db.query(models.Vendor).first()
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Vendor profile not found or access denied")
     if not vendor:
         return []
 
@@ -85,7 +85,7 @@ def submit_bid(
 ):
     vendor = db.query(models.Vendor).filter(models.Vendor.name == current_user.department).first()
     if not vendor:
-        vendor = db.query(models.Vendor).first()
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Vendor profile not found or access denied")
     if not vendor:
         raise HTTPException(status_code=400, detail="No vendor profile associated with user")
 

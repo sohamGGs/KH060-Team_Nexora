@@ -150,7 +150,7 @@ class NetSuiteSyncResponse(BaseModel):
     sync_status: str
     subsidiary: str
     gl_account: str
-    currency: str = "USD"
+    currency: str = "INR"
     three_way_match_status: str
     suitetalk_rest_payload: Dict[str, Any]
     last_synced_at: datetime

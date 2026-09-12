@@ -36,7 +36,7 @@ def get_vendor_orders(
     # Determine vendor identity
     vendor = db.query(models.Vendor).filter(models.Vendor.name == current_user.department).first()
     if not vendor:
-        vendor = db.query(models.Vendor).first()
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Vendor profile not found or access denied")
 
     vendor_id = vendor.id if vendor else None
 

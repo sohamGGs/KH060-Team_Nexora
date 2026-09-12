@@ -152,7 +152,7 @@ def get_vendor_negotiations(
         .first()
     )
     if not vendor:
-        vendor = db.query(models.Vendor).first()
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Vendor profile not found or access denied")
     if not vendor:
         return []
 
@@ -179,7 +179,7 @@ def get_vendor_negotiation_detail(
         .first()
     )
     if not vendor:
-        vendor = db.query(models.Vendor).first()
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Vendor profile not found or access denied")
 
     session = (
         db.query(models.NegotiationSession)
@@ -209,7 +209,7 @@ def action_vendor_escalation(
         .first()
     )
     if not vendor:
-        vendor = db.query(models.Vendor).first()
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Vendor profile not found or access denied")
 
     session = (
         db.query(models.NegotiationSession)
@@ -379,7 +379,7 @@ def action_vendor_escalation(
                 models.NegotiationEscalation(
                     negotiation_session_id=session.id,
                     role="GOVERNMENT",
-                    reason=f"Proposal of ${last_price:,.2f} requires government review.",
+                    reason=f"Proposal of ₹{last_price:,.2f} requires government review.",
                     requested_price=last_price,
                     requested_delivery_days=last_days,
                     status="PENDING",
@@ -443,7 +443,7 @@ def counter_vendor_negotiation(
         .first()
     )
     if not vendor:
-        vendor = db.query(models.Vendor).first()
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Vendor profile not found or access denied")
 
     session = (
         db.query(models.NegotiationSession)
@@ -481,7 +481,7 @@ def counter_vendor_negotiation(
     )
     if pending_esc:
         pending_esc.status = "APPROVED"
-        pending_esc.comment = f"Resolved via manual vendor counteroffer: ${body.price:,.2f}"
+        pending_esc.comment = f"Resolved via manual vendor counteroffer: ₹{body.price:,.2f}"
         pending_esc.actioned_at = datetime.utcnow()
 
     # 2. Adjust vendor private floor if counteroffer is below current floor (override)
@@ -507,7 +507,7 @@ def counter_vendor_negotiation(
         event_type="HUMAN_VENDOR_COUNTER",
         price=float(body.price),
         delivery_days=int(body.delivery_days),
-        message=body.message or f"Vendor human authority counteroffer: ${body.price:,.2f} ({body.delivery_days} days).",
+        message=body.message or f"Vendor human authority counteroffer: ₹{body.price:,.2f} ({body.delivery_days} days).",
     )
     db.add(human_event)
     session.current_price = float(body.price)
@@ -599,7 +599,7 @@ def counter_vendor_negotiation(
             models.NegotiationEscalation(
                 negotiation_session_id=session.id,
                 role="GOVERNMENT",
-                reason=f"Vendor human counteroffer of ${last_price:,.2f} ({last_days} days) exceeds authorized budget ceiling.",
+                reason=f"Vendor human counteroffer of ₹{last_price:,.2f} ({last_days} days) exceeds authorized budget ceiling.",
                 requested_price=last_price,
                 requested_delivery_days=last_days,
                 status="PENDING",
@@ -612,7 +612,7 @@ def counter_vendor_negotiation(
             models.NegotiationEscalation(
                 negotiation_session_id=session.id,
                 role="VENDOR",
-                reason=f"Counter-response of ${last_price:,.2f} ({last_days} days) crosses vendor commercial limits.",
+                reason=f"Counter-response of ₹{last_price:,.2f} ({last_days} days) crosses vendor commercial limits.",
                 requested_price=last_price,
                 requested_delivery_days=last_days,
                 status="PENDING",
@@ -660,7 +660,7 @@ def resume_vendor_negotiation(
         .first()
     )
     if not vendor:
-        vendor = db.query(models.Vendor).first()
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Vendor profile not found or access denied")
 
     session = (
         db.query(models.NegotiationSession)

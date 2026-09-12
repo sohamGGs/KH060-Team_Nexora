@@ -439,9 +439,9 @@ def run_autonomous_negotiation_endpoint(
             any_escalated = True
             all_completed = False
             esc_reason = (
-                f"Government proposal of ${last_price:,.2f} ({last_days} days) crosses vendor commercial authorization boundary."
+                f"Government proposal of ₹{last_price:,.2f} ({last_days} days) crosses vendor commercial authorization boundary."
                 if final_status == "PENDING_VENDOR_APPROVAL"
-                else f"Vendor proposal of ${last_price:,.2f} ({last_days} days) exceeds government procurement ceiling."
+                else f"Vendor proposal of ₹{last_price:,.2f} ({last_days} days) exceeds government procurement ceiling."
             )
             escalation = NegotiationEscalation(
                 negotiation_session_id=session.id,
@@ -579,6 +579,11 @@ def get_negotiation_history(
         .order_by(PolicyDecision.round.asc())
         .all()
     )
+
+    # Sanitize vendor decisions to prevent leaking vendor floor price
+    for decision in decisions:
+        if decision.role == "VENDOR":
+            decision.threshold_value = None
 
     escalations = (
         db.query(NegotiationEscalation)
@@ -741,7 +746,7 @@ def counter_negotiation_endpoint(
     )
     if pending_esc:
         pending_esc.status = "APPROVED"
-        pending_esc.comment = f"Resolved via manual government counteroffer: ${body.price:,.2f}"
+        pending_esc.comment = f"Resolved via manual government counteroffer: ₹{body.price:,.2f}"
         pending_esc.actioned_at = datetime.utcnow()
 
     # 2. Adjust Government private ceiling if counteroffer exceeds current ceiling (override)
@@ -767,7 +772,7 @@ def counter_negotiation_endpoint(
         event_type="HUMAN_GOV_COUNTER",
         price=float(body.price),
         delivery_days=int(body.delivery_days),
-        message=body.message or f"Government human authority counteroffer: ${body.price:,.2f} ({body.delivery_days} days).",
+        message=body.message or f"Government human authority counteroffer: ₹{body.price:,.2f} ({body.delivery_days} days).",
     )
     db.add(human_event)
     session.current_price = float(body.price)
@@ -863,7 +868,7 @@ def counter_negotiation_endpoint(
             NegotiationEscalation(
                 negotiation_session_id=session.id,
                 role="VENDOR",
-                reason=f"Government human counteroffer of ${last_price:,.2f} ({last_days} days) crosses vendor commercial limits.",
+                reason=f"Government human counteroffer of ₹{last_price:,.2f} ({last_days} days) crosses vendor commercial limits.",
                 requested_price=last_price,
                 requested_delivery_days=last_days,
                 status="PENDING",
@@ -876,7 +881,7 @@ def counter_negotiation_endpoint(
             NegotiationEscalation(
                 negotiation_session_id=session.id,
                 role="GOVERNMENT",
-                reason=f"Counter-response of ${last_price:,.2f} ({last_days} days) exceeds authorized budget ceiling.",
+                reason=f"Counter-response of ₹{last_price:,.2f} ({last_days} days) exceeds authorized budget ceiling.",
                 requested_price=last_price,
                 requested_delivery_days=last_days,
                 status="PENDING",

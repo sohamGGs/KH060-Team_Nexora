@@ -31,7 +31,7 @@ def evaluate_routing_rule(estimated_budget: float, department: str, urgency: str
     """
     if estimated_budget > 100000 and department.strip().lower() == "operations":
         return (
-            "Rule 1: Operations CapEx > $100k requires Plant Head Approval",
+            "Rule 1: Operations CapEx > ₹1,00,000 requires Plant Head Approval",
             "Plant Head"
         )
     elif urgency.strip().lower() == "critical" and quantity > 500:
@@ -41,7 +41,7 @@ def evaluate_routing_rule(estimated_budget: float, department: str, urgency: str
         )
     elif estimated_budget > 50000:
         return (
-            "Rule 3: High Value (> $50,000) requires Finance Director Approval",
+            "Rule 3: High Value (> ₹50,000) requires Finance Director Approval",
             "Finance Director"
         )
     else:
@@ -186,7 +186,7 @@ def generate_po_pdf(
     tax = round(po.total_amount * 0.00, 2)  # Tax exempt or bundled
     items_data.append(["", "", "", "Subtotal:", f"${po.total_amount:,.2f}"])
     items_data.append(["", "", "", "Tax (0.0%):", f"${tax:,.2f}"])
-    items_data.append(["", "", "", Paragraph("<b>TOTAL (USD):</b>", body_bold), Paragraph(f"<b>${po.total_amount:,.2f}</b>", body_bold)])
+    items_data.append(["", "", "", Paragraph("<b>TOTAL (INR):</b>", body_bold), Paragraph(f"<b>₹{po.total_amount:,.2f}</b>", body_bold)])
 
     items_table = Table(items_data, colWidths=[30, 250, 45, 105, 110])
     items_table.setStyle(TableStyle([
@@ -331,12 +331,20 @@ def take_approval_action(
     if not workflow:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Approval workflow record not found")
 
+    pr = workflow.purchase_request
+
+    if current_user.role not in ["Lead Procurement Officer", "Admin"]:
+        if current_user.role not in workflow.triggered_rule and workflow.approver_id != current_user.id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You are not authorized to approve this workflow.")
+
+    if pr.requester and pr.requester.id == current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Self-approval of purchase requests is prohibited.")
+
     workflow.status = action
     workflow.comment = comment or f"{action} by {current_user.full_name} ({current_user.role})"
     workflow.actioned_at = datetime.datetime.utcnow()
     workflow.approver_id = current_user.id
 
-    pr = workflow.purchase_request
     if action == "Approved":
         pr.status = "Approved"
     elif action == "Rejected":
@@ -530,7 +538,7 @@ def get_netsuite_po_sync(
             },
             "currency": {
                 "id": "1",
-                "name": "USD"
+                "name": "INR"
             },
             "approvalStatus": {
                 "id": "2",
@@ -561,7 +569,7 @@ def get_netsuite_po_sync(
         sync_status="Synced (Oracle NetSuite SuiteTalk REST API v2024.1)",
         subsidiary=po.netsuite_subsidiary or "TechCorp Americas (Sub 01)",
         gl_account=po.netsuite_gl_account or "6010 - Direct Sourcing & Material CapEx",
-        currency="USD",
+        currency="INR",
         three_way_match_status=match_status,
         suitetalk_rest_payload=suitetalk_payload,
         last_synced_at=datetime.datetime.utcnow()
