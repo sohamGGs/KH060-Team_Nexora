@@ -6,7 +6,7 @@ import {
   Users,
   Zap,
   Clock,
-  DollarSign,
+  IndianRupee,
   CheckCircle2,
   AlertTriangle,
   Building,
@@ -176,7 +176,7 @@ export default function GovActiveBids({
           <div className="p-2.5 rounded-lg bg-white border border-[#e8e6df] shadow-2xs">
             <span className="text-[10px] font-mono uppercase text-slate-500 block">Lowest Quoted Price</span>
             <span className="text-base font-bold font-mono text-emerald-700">
-              ${lowestPrice !== null ? Number(lowestPrice).toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '---'}
+              ₹{lowestPrice !== null ? Number(lowestPrice).toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '---'}
             </span>
           </div>
           <div className="p-2.5 rounded-lg bg-white border border-[#e8e6df] shadow-2xs">

@@ -135,7 +135,7 @@ export default function PurchaseOrders({ onNavigateToTab }) {
         <div className="enterprise-card p-3 bg-white space-y-1">
           <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider font-mono">Authorized Spend</span>
           <div className="text-xl font-mono tabular-nums font-bold text-emerald-700">
-            ${pos.reduce((acc, p) => acc + (p.total_amount || 0), 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+            ₹{pos.reduce((acc, p) => acc + (p.total_amount || 0), 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
           </div>
         </div>
         <div className="enterprise-card p-3 bg-white space-y-1">
@@ -224,7 +224,7 @@ export default function PurchaseOrders({ onNavigateToTab }) {
 
                     {/* Total Amount (Primary number) */}
                     <td className="py-3 px-3 font-mono font-extrabold text-slate-900 text-sm text-right whitespace-nowrap">
-                      ${po.total_amount?.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      ₹{po.total_amount?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </td>
 
                     {/* Combined Lifecycle Status & Actions */}
@@ -450,7 +450,7 @@ export default function PurchaseOrders({ onNavigateToTab }) {
                   <div className="text-[11px] text-slate-700 font-medium">Commercial terms Net-30</div>
                 </div>
                 <div className="text-base font-mono font-bold text-emerald-700">
-                  ${previewPo.total_amount?.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  ₹{previewPo.total_amount?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                 </div>
               </div>
 

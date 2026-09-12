@@ -6,7 +6,7 @@ import {
   ArrowUpDown,
   Tag,
   Clock,
-  DollarSign,
+  IndianRupee,
   Building,
   Send,
   X,
@@ -392,7 +392,7 @@ export default function VendorActiveOrders({
                       Total Quoted Price (₹ INR) <span className="text-rose-600">*</span>
                     </label>
                     <div className="relative">
-                      <DollarSign className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                      <IndianRupee className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                       <input
                         type="number"
                         step="0.01"

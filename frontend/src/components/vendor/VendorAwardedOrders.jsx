@@ -3,7 +3,7 @@ import {
   Award,
   CheckCircle2,
   Calendar,
-  DollarSign,
+  IndianRupee,
   Building,
   FileText,
   Clock,

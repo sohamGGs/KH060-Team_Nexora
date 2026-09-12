@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  DollarSign,
+  IndianRupee,
   TrendingUp,
   Clock,
   CheckCircle,
@@ -132,10 +132,10 @@ export default function Dashboard({
           <div className="enterprise-card p-4 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest font-mono">Total PO Spend</span>
-              <DollarSign className="w-3.5 h-3.5 text-blue-600" />
+              <IndianRupee className="w-3.5 h-3.5 text-blue-600" />
             </div>
             <div className="text-2xl lg:text-3xl font-mono tabular-nums font-extrabold text-slate-900 tracking-tight">
-              ${(metrics?.total_spend || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              ₹{(metrics?.total_spend || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
             </div>
             <div className="text-[11px] text-slate-500 flex items-center gap-1.5 pt-1">
               <span className="text-emerald-600 font-semibold flex items-center gap-0.5 font-mono">
@@ -211,7 +211,7 @@ export default function Dashboard({
             </span>
             <span className="text-slate-400 hidden md:inline">•</span>
             <span className="text-slate-500 text-[11px] hidden md:inline">
-              Automated policy rules: Operations ($100k+), IT Software ($50k+), Departmental Fast-Track (≤$10k)
+              Automated policy rules: Operations (&gt; ₹1,00,000), IT Software (&gt; ₹50,000), Departmental Fast-Track (≤ ₹10,000)
             </span>
           </div>
         </div>
@@ -233,7 +233,7 @@ export default function Dashboard({
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest font-mono">Financial Flow</span>
               <h3 className="text-sm font-bold text-slate-900 tracking-tight">Monthly Procurement Spend</h3>
             </div>
-            <span className="text-[10px] text-blue-600 font-mono font-semibold">USD ($)</span>
+            <span className="text-[10px] text-blue-600 font-mono font-semibold">INR (₹)</span>
           </div>
 
           <div className="h-56 w-full">
@@ -247,10 +247,10 @@ export default function Dashboard({
                 </defs>
                 <CartesianGrid strokeDasharray="2 2" stroke="#e8e6df" />
                 <XAxis dataKey="month" stroke="#78756e" fontSize={10} tickLine={false} />
-                <YAxis stroke="#78756e" fontSize={10} tickFormatter={(v) => `$${v / 1000}k`} tickLine={false} />
+                <YAxis stroke="#78756e" fontSize={10} tickFormatter={(v) => `₹${v / 1000}k`} tickLine={false} />
                 <Tooltip
                   contentStyle={{ backgroundColor: '#fbfbfa', borderColor: '#e8e6df', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.06)', fontSize: '11px', color: '#1c1b18' }}
-                  formatter={(value) => [`$${Number(value).toLocaleString()}`, 'Spend']}
+                  formatter={(value) => [`₹${Number(value).toLocaleString('en-IN')}`, 'Spend']}
                 />
                 <Area type="monotone" dataKey="spend" stroke="#2563eb" strokeWidth={2} fillOpacity={1} fill="url(#spendGradient)" />
               </AreaChart>
@@ -273,10 +273,10 @@ export default function Dashboard({
               <BarChart data={metrics?.spend_by_department || []} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="2 2" stroke="#e8e6df" />
                 <XAxis dataKey="department" stroke="#78756e" fontSize={10} tickLine={false} />
-                <YAxis stroke="#78756e" fontSize={10} tickFormatter={(v) => `$${v / 1000}k`} tickLine={false} />
+                <YAxis stroke="#78756e" fontSize={10} tickFormatter={(v) => `₹${v / 1000}k`} tickLine={false} />
                 <Tooltip
                   contentStyle={{ backgroundColor: '#fbfbfa', borderColor: '#e8e6df', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.06)', fontSize: '11px', color: '#1c1b18' }}
-                  formatter={(value) => [`$${Number(value).toLocaleString()}`, 'Allocated']}
+                  formatter={(value) => [`₹${Number(value).toLocaleString('en-IN')}`, 'Allocated']}
                 />
                 <Bar dataKey="amount" radius={[3, 3, 0, 0]}>
                   {(metrics?.spend_by_department || []).map((entry, index) => (
@@ -337,7 +337,7 @@ export default function Dashboard({
                     </td>
                     <td className="py-3 px-3 text-slate-700 text-xs">{pr.department}</td>
                     <td className="py-3 px-3 font-mono tabular-nums font-semibold text-slate-900 text-xs">
-                      ${pr.estimated_budget.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      ₹{pr.estimated_budget.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </td>
                     <td className="py-3 px-3">
                       <span className={`px-2 py-0.5 rounded text-[9px] font-mono uppercase border ${getUrgencyBadge(pr.urgency)}`}>

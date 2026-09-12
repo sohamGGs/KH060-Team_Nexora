@@ -46,7 +46,7 @@ const URGENCIES = [
 
 const PRESETS = [
   {
-    name: 'Rule 1: Operations CapEx > $100k',
+    name: 'Rule 1: Operations CapEx > ₹1,00,000',
     title: 'High-Precision Automated Conveyor Assembly & Stamping Cell',
     desc: 'Heavy industrial automated conveyor system with integrated PLC logic controllers and high-speed optical inspection for Line #2.',
     qty: 2,
@@ -70,7 +70,7 @@ const PRESETS = [
     policyTag: 'Compliant'
   },
   {
-    name: 'Policy Test: Spend Cap Violation ($185k)',
+    name: 'Policy Test: Spend Cap Violation (₹1,85,000)',
     title: 'Plant-Wide Smart Factory Automation & Robotic Palletizer Unit',
     desc: 'Automated high-capacity robotic palletizer cell for central warehouse distribution hub.',
     qty: 1,
@@ -78,7 +78,7 @@ const PRESETS = [
     category: 'Robotics & Automation',
     urgency: 'High',
     budget: 185000,
-    badge: 'Exceeds $150k Cap',
+    badge: 'Exceeds ₹1,50,000 Cap',
     policyTag: 'Spend Cap Alert'
   },
   {
@@ -114,7 +114,7 @@ export default function PurchaseRequestForm({ onPrCreated }) {
 
     if (budgetNum > 100000 && department === 'Operations') {
       return {
-        rule: 'Rule 1: Operations CapEx > $100k',
+        rule: 'Rule 1: Operations CapEx > ₹1,00,000',
         approver: 'Plant Head (Rajesh Verma)',
         color: 'bg-emerald-50 border-emerald-200 text-emerald-800',
         desc: 'High-value operational CapEx requires direct sign-off from the Plant Head.'
@@ -128,10 +128,10 @@ export default function PurchaseRequestForm({ onPrCreated }) {
       };
     } else if (budgetNum > 50000) {
       return {
-        rule: 'Rule 3: High Value Purchase (> $50,000)',
+        rule: 'Rule 3: High Value Purchase (> ₹50,000)',
         approver: 'Finance Director (Arjun Patel)',
         color: 'bg-blue-50 border-blue-200 text-blue-800',
-        desc: 'Any expenditure exceeding $50,000 requires corporate financial controller audit.'
+        desc: 'Any expenditure exceeding ₹50,000 requires corporate financial controller audit.'
       };
     } else {
       return {
@@ -219,7 +219,7 @@ export default function PurchaseRequestForm({ onPrCreated }) {
               </div>
               <div className="text-slate-500 text-[11px] line-clamp-2">{preset.title}</div>
               <div className="pt-1 flex items-center justify-between text-[10px]">
-                <span className="text-slate-900 font-mono font-bold">${preset.budget.toLocaleString()}</span>
+                <span className="text-slate-900 font-mono font-bold">₹{preset.budget.toLocaleString('en-IN')}</span>
                 <span className={`px-1.5 py-0.2 rounded font-mono text-[9px] uppercase font-semibold border ${
                   preset.policyTag === 'Compliant'
                     ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
@@ -456,7 +456,7 @@ export default function PurchaseRequestForm({ onPrCreated }) {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="block text-xs font-medium text-slate-700">
-                  Authorized Budget (USD $) <span className="text-rose-600">*</span>
+                  Authorized Budget (₹ INR) <span className="text-rose-600">*</span>
                 </label>
                 <div className="relative">
                   <DollarSign className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
@@ -537,9 +537,9 @@ export default function PurchaseRequestForm({ onPrCreated }) {
             <div className="border-t border-[#e8e6df] pt-2.5 space-y-1 text-[11px] text-slate-500">
               <div className="font-semibold text-slate-700 text-[10px] uppercase">Routing Hierarchy:</div>
               <ul className="space-y-1 pl-4 list-disc text-slate-600 text-[10px]">
-                <li><strong className="text-slate-800">Rule 1:</strong> Budget &gt; $100k &amp; Operations &rarr; <strong>Plant Head</strong></li>
+                <li><strong className="text-slate-800">Rule 1:</strong> Budget &gt; ₹1,00,000 &amp; Operations &rarr; <strong>Plant Head</strong></li>
                 <li><strong className="text-slate-800">Rule 2:</strong> Critical &amp; Qty &gt; 500 &rarr; <strong>VP Operations</strong></li>
-                <li><strong className="text-slate-800">Rule 3:</strong> Budget &gt; $50k &rarr; <strong>Finance Director</strong></li>
+                <li><strong className="text-slate-800">Rule 3:</strong> Budget &gt; ₹50,000 &rarr; <strong>Finance Director</strong></li>
                 <li><strong className="text-slate-800">Rule 4:</strong> Standard &rarr; <strong>Department Manager</strong></li>
               </ul>
             </div>

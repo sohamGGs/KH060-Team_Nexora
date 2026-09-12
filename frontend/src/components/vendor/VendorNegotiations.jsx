@@ -8,7 +8,7 @@ import {
   AlertTriangle,
   RefreshCw,
   Search,
-  DollarSign,
+  IndianRupee,
   Calendar,
   ChevronRight
 } from 'lucide-react';

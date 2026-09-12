@@ -3,7 +3,7 @@ import {
   Bot,
   User,
   Clock,
-  DollarSign,
+  IndianRupee,
   Calendar,
   CheckCircle2,
   AlertTriangle,
@@ -184,7 +184,7 @@ export default function NegotiationPanel({
           Number(counterDays),
           counterMessage
         );
-        setSuccessMsg(`Government counteroffer of ₹₹{Number(counterPrice).toLocaleString()} submitted! Vendor Agent is responding.`);
+        setSuccessMsg(`Government counteroffer of ₹${Number(counterPrice).toLocaleString('en-IN')} submitted! Vendor Agent is responding.`);
       } else {
         resp = await vendorPortalAPI.counterOffer(
           sessionId,
@@ -192,7 +192,7 @@ export default function NegotiationPanel({
           Number(counterDays),
           counterMessage
         );
-        setSuccessMsg(`Vendor counteroffer of ₹₹{Number(counterPrice).toLocaleString()} submitted! Government Agent is responding.`);
+        setSuccessMsg(`Vendor counteroffer of ₹${Number(counterPrice).toLocaleString('en-IN')} submitted! Government Agent is responding.`);
       }
 
       setShowCounterModal(false);
@@ -285,7 +285,7 @@ export default function NegotiationPanel({
               </span>
               <span className="text-base font-bold font-mono text-slate-900">
                 {currentPrice !== null && currentPrice !== undefined
-                  ? `₹₹{Number(currentPrice).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+                  ? `₹${Number(currentPrice).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                   : '---'}
               </span>
             </div>
@@ -462,7 +462,7 @@ export default function NegotiationPanel({
                       <div className="pt-2 flex items-center gap-2 flex-wrap">
                         {ev.price !== null && ev.price !== undefined && (
                           <span className="inline-flex items-center gap-1 font-mono text-xs font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-900 border border-blue-200">
-                            <DollarSign className="w-3.5 h-3.5 text-blue-600" />
+                            <IndianRupee className="w-3.5 h-3.5 text-blue-600" />
                             ₹{Number(ev.price).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                           </span>
                         )}
@@ -576,7 +576,7 @@ export default function NegotiationPanel({
                       <div className="pt-2 flex items-center gap-2 flex-wrap">
                         {ev.price !== null && ev.price !== undefined && (
                           <span className="inline-flex items-center gap-1 font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-900 border border-slate-300">
-                            <DollarSign className="w-3.5 h-3.5 text-slate-600" />
+                            <IndianRupee className="w-3.5 h-3.5 text-slate-600" />
                             ₹{Number(ev.price).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                           </span>
                         )}
@@ -1099,7 +1099,7 @@ export default function NegotiationPanel({
                     Proposed Price (₹)
                   </label>
                   <div className="relative">
-                    <DollarSign className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+                    <IndianRupee className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
                     <input
                       type="number"
                       step="0.01"

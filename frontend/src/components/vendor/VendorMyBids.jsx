@@ -4,7 +4,7 @@ import {
   Search,
   MessageSquare,
   Clock,
-  DollarSign,
+  IndianRupee,
   TrendingUp,
   Tag,
   CheckCircle2,

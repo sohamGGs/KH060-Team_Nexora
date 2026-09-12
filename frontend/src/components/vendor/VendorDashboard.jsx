@@ -7,7 +7,7 @@ import {
   TrendingUp,
   Clock,
   ArrowRight,
-  DollarSign,
+  IndianRupee,
   Tag,
   Building,
   CheckCircle2,

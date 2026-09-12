@@ -82,11 +82,11 @@ export default function GovSidebar({
     <aside className="w-64 bg-[#fbfbfa] border-r border-[#e8e6df] flex flex-col justify-between shrink-0 h-screen sticky top-0 z-30 select-none">
       {/* Top Section */}
       <div className="flex flex-col h-full overflow-y-auto">
-        {/* Brand Header */}
-        <div className="p-4 border-b border-[#e8e6df] flex items-center justify-between">
+        {/* Brand Header with Subtle Government Emblem */}
+        <div className="p-4 border-b border-[#e8e6df] flex items-center justify-between bg-white/40 backdrop-blur-sm">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-md bg-blue-600 text-white flex items-center justify-center shadow-sm">
-              <Layers className="w-4 h-4" />
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-700 to-amber-900 text-white flex items-center justify-center shadow-xs overflow-hidden p-0.5 border border-amber-600/30 shrink-0">
+              <img src="/assets/lion_capital.jpg" alt="Government of India" className="w-full h-full object-cover object-top filter contrast-125 brightness-110" />
             </div>
             <div>
               <div className="flex items-center gap-1.5 leading-none">
@@ -95,7 +95,7 @@ export default function GovSidebar({
                   GOV
                 </span>
               </div>
-              <span className="text-[10px] text-slate-500 font-mono tracking-tight">Enterprise ERP</span>
+              <span className="text-[10px] text-slate-500 font-medium tracking-tight">Govt of India Command</span>
             </div>
           </div>
         </div>

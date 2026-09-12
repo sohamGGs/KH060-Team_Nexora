@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Sparkles,
   Award,
-  DollarSign,
+  IndianRupee,
   Truck,
   ShieldCheck,
   History,
@@ -381,7 +381,7 @@ export default function VendorComparison({
           <div className="flex items-center gap-3 text-xs">
             <div className="px-3 py-1.5 rounded-lg bg-[#f5f4f0] border border-[#e8e6df]">
               <span className="text-slate-500 text-[9px] uppercase font-mono block">Estimated Budget</span>
-              <span className="font-mono tabular-nums font-bold text-slate-900">${(prDetail.estimated_budget || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+              <span className="font-mono tabular-nums font-bold text-slate-900">₹{(prDetail.estimated_budget || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
             </div>
             <div className="px-3 py-1.5 rounded-lg bg-[#f5f4f0] border border-[#e8e6df]">
               <span className="text-slate-500 text-[9px] uppercase font-mono block">Department</span>
@@ -475,8 +475,8 @@ export default function VendorComparison({
                   {aiAudit.selected_vendor_name}
                 </div>
                 <div className="text-xs text-emerald-700 font-medium flex items-center gap-1">
-                  <DollarSign className="w-3 h-3" />
-                  Est. Savings: ${(aiAudit?.net_savings_estimate || 0).toLocaleString()}
+                  <IndianRupee className="w-3 h-3" />
+                  Est. Savings: ₹{(aiAudit?.net_savings_estimate || 0).toLocaleString('en-IN')}
                 </div>
               </div>
 
@@ -563,7 +563,7 @@ export default function VendorComparison({
               <div className="flex items-center gap-2.5 self-start sm:self-auto bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg">
                 <span className="text-[10px] text-emerald-800 uppercase font-semibold">Net Savings:</span>
                 <span className="text-xs font-bold text-emerald-700 font-mono">
-                  +${(negotiationData.total_savings || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  +₹{(negotiationData.total_savings || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                 </span>
                 <span className="text-[11px] text-emerald-600 font-mono">
                   ({(negotiationData.total_savings_pct || 0).toFixed(1)}%)

@@ -13,7 +13,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Building,
-  DollarSign,
+  IndianRupee,
   Tag
 } from 'lucide-react';
 import { prAPI } from '../../api';
