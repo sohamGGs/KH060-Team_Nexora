@@ -20,6 +20,36 @@ GENERATED_POS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname
 os.makedirs(GENERATED_POS_DIR, exist_ok=True)
 
 
+def _fmt_inr(amount: float) -> str:
+    """Format a float as Indian Rupee with Indian number grouping.
+
+    Example: 1234567.89 -> Rs.12,34,567.89
+    """
+    amount = round(amount, 2)
+    is_negative = amount < 0
+    abs_amount = abs(amount)
+    int_part = int(abs_amount)
+    dec_part = round(abs_amount - int_part, 2)
+
+    s = str(int_part)
+    if len(s) > 3:
+        last3 = s[-3:]
+        rest = s[:-3]
+        groups = []
+        while len(rest) > 2:
+            groups.append(rest[-2:])
+            rest = rest[:-2]
+        if rest:
+            groups.append(rest)
+        groups.reverse()
+        grouped = ','.join(groups) + ',' + last3
+    else:
+        grouped = s
+
+    dec_str = f"{dec_part:.2f}"[1:]  # ".xx"
+    formatted = f"₹{grouped}{dec_str}"
+    return ('-' + formatted) if is_negative else formatted
+
 def evaluate_routing_rule(estimated_budget: float, department: str, urgency: str, quantity: int) -> tuple[str, str]:
     """
     Evaluates Approval Routing Rules:
@@ -177,16 +207,16 @@ def generate_po_pdf(
             "1",
             Paragraph(f"<b>{pr.title}</b><br/><font color='#64748b' size=8>{pr.item_description}</font>", body_text),
             str(pr.quantity),
-            f"${unit_price:,.2f}",
-            f"${po.total_amount:,.2f}"
+            _fmt_inr(unit_price),
+            _fmt_inr(po.total_amount)
         ]
     ]
 
     # Add Subtotal / Tax / Total
     tax = round(po.total_amount * 0.00, 2)  # Tax exempt or bundled
-    items_data.append(["", "", "", "Subtotal:", f"${po.total_amount:,.2f}"])
-    items_data.append(["", "", "", "Tax (0.0%):", f"${tax:,.2f}"])
-    items_data.append(["", "", "", Paragraph("<b>TOTAL (INR):</b>", body_bold), Paragraph(f"<b>₹{po.total_amount:,.2f}</b>", body_bold)])
+    items_data.append(["", "", "", "Subtotal:", _fmt_inr(po.total_amount)])
+    items_data.append(["", "", "", "Tax (GST 0.0%):", _fmt_inr(tax)])
+    items_data.append(["", "", "", Paragraph("<b>TOTAL (INR):</b>", body_bold), Paragraph(f"<b>{_fmt_inr(po.total_amount)}</b>", body_bold)])
 
     items_table = Table(items_data, colWidths=[30, 250, 45, 105, 110])
     items_table.setStyle(TableStyle([
